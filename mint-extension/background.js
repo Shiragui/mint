@@ -3,8 +3,21 @@
  * Handles tab capture, Dedalus Labs / Gemini Vision API, and webhook POST.
  */
 
+importScripts('config.js');
+
 const DEDALUS_VISION_MODEL = 'google/gemini-2.0-flash';
 const GEMINI_MODEL = 'gemini-2.5-flash';
+
+function getConfig() {
+  return {
+    visionProvider: (typeof CONFIG !== 'undefined' && CONFIG.visionProvider) || 'dedalus',
+    dedalusApiKey: (typeof CONFIG !== 'undefined' && CONFIG.dedalusApiKey) || '',
+    geminiApiKey: (typeof CONFIG !== 'undefined' && CONFIG.geminiApiKey) || '',
+    webhookUrl: (typeof CONFIG !== 'undefined' && CONFIG.webhookUrl) || '',
+    serpapiKey: (typeof CONFIG !== 'undefined' && CONFIG.serpapiKey) || '',
+    imgbbApiKey: (typeof CONFIG !== 'undefined' && CONFIG.imgbbApiKey) || ''
+  };
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'CAPTURE_TAB') {
@@ -31,30 +44,11 @@ async function handleCaptureTab(tabId) {
   }
 }
 
-async function getStoredConfig() {
-  const out = await chrome.storage.sync.get([
-    'visionProvider',
-    'dedalusApiKey',
-    'geminiApiKey',
-    'webhookUrl',
-    'serpapiKey',
-    'imgbbApiKey'
-  ]);
-  return {
-    visionProvider: out.visionProvider || 'dedalus',
-    dedalusApiKey: out.dedalusApiKey || '',
-    geminiApiKey: out.geminiApiKey || '',
-    webhookUrl: out.webhookUrl || '',
-    serpapiKey: out.serpapiKey || '',
-    imgbbApiKey: out.imgbbApiKey || ''
-  };
-}
-
 async function handleAnalyzeAndSend(payload) {
   const { croppedBase64, mimeType } = payload;
   if (!croppedBase64) throw new Error('No image data');
 
-  const config = await getStoredConfig();
+  const config = getConfig();
   const provider = config.visionProvider || 'dedalus';
 
   const apiKey =
@@ -64,7 +58,7 @@ async function handleAnalyzeAndSend(payload) {
 
   if (!apiKey) {
     const name = provider === 'gemini' ? 'Gemini' : 'Dedalus Labs';
-    throw new Error(`${name} API key is not set. Open extension options to add it.`);
+    throw new Error(`${name} API key is not set. Edit config.js to add it.`);
   }
 
   let description;
@@ -76,7 +70,7 @@ async function handleAnalyzeAndSend(payload) {
     }
   } catch (err) {
     if (err.message && err.message.includes('401')) {
-      throw new Error('Invalid API key. Check your key in extension options.');
+      throw new Error('Invalid API key. Check your key in config.js.');
     }
     if (err.message && (err.message.includes('403') || err.message.includes('429'))) {
       throw new Error(err.message);
