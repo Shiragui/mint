@@ -36,13 +36,15 @@ async function getStoredConfig() {
     'visionProvider',
     'dedalusApiKey',
     'geminiApiKey',
-    'webhookUrl'
+    'webhookUrl',
+    'serpapiKey'
   ]);
   return {
     visionProvider: out.visionProvider || 'dedalus',
     dedalusApiKey: out.dedalusApiKey || '',
     geminiApiKey: out.geminiApiKey || '',
-    webhookUrl: out.webhookUrl || ''
+    webhookUrl: out.webhookUrl || '',
+    serpapiKey: out.serpapiKey || ''
   };
 }
 
@@ -99,7 +101,7 @@ async function handleAnalyzeAndSend(payload) {
 
   let similarProducts = [];
   try {
-    similarProducts = await getSimilarProducts(apiKey, provider, description);
+    similarProducts = await getSimilarProducts(apiKey, provider, description, config.serpapiKey);
   } catch (_) {
     // Non-fatal: still return description
   }
@@ -221,40 +223,81 @@ async function callGeminiVision(apiKey, base64Image, mimeType) {
 }
 
 /**
- * Ask AI for similar purchasable products given the image description.
- * Returns array of { name, search_query }.
+ * Fetch real similar products from Google Shopping via SerpAPI.
+ * Returns array of { name, price, link, image, source }.
+ * Falls back to AI-generated search links if SerpAPI key is not set.
  */
-async function getSimilarProducts(apiKey, provider, description) {
-  const prompt = `The user selected an image region that was described as: "${description}". Suggest 3 to 5 similar or related products that could be purchased online. For each product provide a short name and a search query (keywords) to find it on shopping sites. Reply with ONLY a valid JSON array of objects, each with exactly two keys: "name" (string) and "search_query" (string). No other text or markdown. Example: [{"name": "Wireless Mouse", "search_query": "wireless bluetooth mouse"}]`;
+async function getSimilarProducts(apiKey, provider, description, serpapiKey) {
+  // If SerpAPI key is set, fetch real product data from Google Shopping
+  if (serpapiKey && serpapiKey.trim()) {
+    try {
+      const products = await fetchShoppingProducts(serpapiKey.trim(), description, apiKey, provider);
+      if (products.length > 0) return products;
+    } catch (err) {
+      // Fall through to AI fallback on error
+    }
+  }
 
+  // Fallback: AI-generated search queries + generic search links
+  const prompt = `The user selected an image region that was described as: "${description}". Suggest a single concise search query (2-5 keywords) to find similar products on shopping sites. Reply with ONLY a valid JSON object: {"search_query": "your search terms"}. No other text or markdown.`;
   let rawText;
   if (provider === 'gemini') {
     rawText = await callGeminiText(apiKey, prompt);
   } else {
     rawText = await callDedalusText(apiKey, prompt);
   }
+  const searchQuery = parseSearchQuery(rawText);
+  if (!searchQuery) return [];
 
-  const parsed = parseSimilarProductsJson(rawText);
-  return Array.isArray(parsed) ? parsed.filter((p) => p && p.name && p.search_query) : [];
+  // Return fallback format for content.js to render as search links
+  return [{ name: 'Search similar products', search_query: searchQuery, fallback: true }];
 }
 
-function parseSimilarProductsJson(text) {
-  if (!text || typeof text !== 'string') return [];
+async function fetchShoppingProducts(serpapiKey, description, apiKey, provider) {
+  const prompt = `The user selected an image region described as: "${description}". Reply with ONLY a short 2-5 word search query to find similar products to buy (e.g. "wireless bluetooth mouse" or "ceramic coffee mug"). No other text.`;
+  let searchQuery;
+  if (provider === 'gemini') {
+    searchQuery = (await callGeminiText(apiKey, prompt)).trim();
+  } else {
+    searchQuery = (await callDedalusText(apiKey, prompt)).trim();
+  }
+  if (!searchQuery) searchQuery = description.split(/[.!?]/)[0].trim().slice(0, 50) || 'similar product';
+
+  const params = new URLSearchParams({
+    engine: 'google_shopping',
+    q: searchQuery,
+    api_key: serpapiKey
+  });
+  const res = await fetch('https://serpapi.com/search.json?' + params.toString());
+  if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
+  const data = await res.json();
+  const results = data.shopping_results || [];
+
+  return results.slice(0, 8).map((p) => ({
+    name: p.title || 'Product',
+    price: p.price || '',
+    link: p.product_link || p.link || '',
+    image: p.thumbnail || p.serpapi_thumbnail || '',
+    source: p.source || 'Google Shopping'
+  })).filter((p) => p.link);
+}
+
+function parseSearchQuery(text) {
+  if (!text || typeof text !== 'string') return null;
   const trimmed = text.trim();
-  // Strip markdown code block if present
   let jsonStr = trimmed;
   const codeMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeMatch) jsonStr = codeMatch[1].trim();
   else {
-    const start = trimmed.indexOf('[');
-    const end = trimmed.lastIndexOf(']') + 1;
+    const start = trimmed.indexOf('{');
+    const end = trimmed.lastIndexOf('}') + 1;
     if (start !== -1 && end > start) jsonStr = trimmed.slice(start, end);
   }
   try {
-    return JSON.parse(jsonStr);
-  } catch (_) {
-    return [];
-  }
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed.search_query === 'string') return parsed.search_query.trim();
+  } catch (_) {}
+  return trimmed.replace(/^["']|["']$/g, '').slice(0, 80) || null;
 }
 
 async function callDedalusText(apiKey, prompt) {

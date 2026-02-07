@@ -122,10 +122,28 @@
         padding: 12px 14px;
         margin-bottom: 10px;
         border: 1px solid #e5e7eb;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s ease, border-color 0.15s ease;
       }
+      #lens-results-popup .lens-product-card:hover { background: #f3f4f6; border-color: #d1d5db; }
       #lens-results-popup .lens-product-card:last-child { margin-bottom: 0; }
-      #lens-results-popup .lens-product-name { font-weight: 600; font-size: 14px; color: #111; margin-bottom: 8px; }
-      #lens-results-popup .lens-product-links { display: flex; flex-wrap: wrap; gap: 8px; }
+      #lens-results-popup .lens-product-img {
+        width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
+      }
+      #lens-results-popup .lens-product-img-placeholder {
+        width: 64px; height: 64px; background: #e5e7eb; border-radius: 8px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 20px; color: #9ca3af;
+      }
+      #lens-results-popup .lens-product-info { flex: 1; min-width: 0; }
+      #lens-results-popup .lens-product-name { font-weight: 600; font-size: 14px; color: #111; margin-bottom: 4px; line-height: 1.3; }
+      #lens-results-popup .lens-product-meta { font-size: 12px; color: #6b7280; }
+      #lens-results-popup .lens-product-price { font-weight: 600; color: #0d7a3c; }
+      #lens-results-popup .lens-product-source { color: #6b7280; }
+      #lens-results-popup .lens-product-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
       #lens-results-popup .lens-product-links a {
         font-size: 12px; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: 500;
         background: #0d47a1; color: #fff;
@@ -154,6 +172,12 @@
     overlay.appendChild(loadingMsg);
     document.body.appendChild(overlay);
     return { overlay, canvas };
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
   }
 
   function showResultsPopup(description, similarProducts, webhookError) {
@@ -203,28 +227,71 @@
     }
     if (Array.isArray(similarProducts) && similarProducts.length > 0) {
       similarProducts.forEach((p) => {
-        const card = document.createElement('div');
+        const isRealProduct = p.link && !p.fallback;
+        const card = document.createElement(isRealProduct ? 'a' : 'div');
         card.className = 'lens-product-card';
+        if (isRealProduct) {
+          card.href = p.link;
+          card.target = '_blank';
+          card.rel = 'noopener noreferrer';
+        }
+
+        const imgWrap = document.createElement('div');
+        if (p.image) {
+          const img = document.createElement('img');
+          img.className = 'lens-product-img';
+          img.src = p.image;
+          img.alt = p.name || '';
+          img.onerror = () => {
+            img.remove();
+            const ph = document.createElement('div');
+            ph.className = 'lens-product-img-placeholder';
+            ph.textContent = '🛒';
+            imgWrap.appendChild(ph);
+          };
+          imgWrap.appendChild(img);
+        } else {
+          imgWrap.className = 'lens-product-img-placeholder';
+          imgWrap.textContent = '🛒';
+        }
+
+        const info = document.createElement('div');
+        info.className = 'lens-product-info';
         const name = document.createElement('div');
         name.className = 'lens-product-name';
         name.textContent = p.name || 'Product';
-        const links = document.createElement('div');
-        links.className = 'lens-product-links';
-        const q = encodeURIComponent((p.search_query || p.name || '').trim());
-        const aGoogle = document.createElement('a');
-        aGoogle.href = 'https://www.google.com/search?tbm=shop&q=' + q;
-        aGoogle.target = '_blank';
-        aGoogle.rel = 'noopener noreferrer';
-        aGoogle.className = 'lens-link-google';
-        aGoogle.textContent = 'Google Shopping';
-        const aAmazon = document.createElement('a');
-        aAmazon.href = 'https://www.amazon.com/s?k=' + q;
-        aAmazon.target = '_blank';
-        aAmazon.rel = 'noopener noreferrer';
-        aAmazon.className = 'lens-link-amazon';
-        aAmazon.textContent = 'Amazon';
-        links.append(aGoogle, aAmazon);
-        card.append(name, links);
+        const meta = document.createElement('div');
+        meta.className = 'lens-product-meta';
+        const parts = [];
+        if (p.price) parts.push(`<span class="lens-product-price">${escapeHtml(p.price)}</span>`);
+        if (p.source) parts.push(`<span class="lens-product-source"> · ${escapeHtml(p.source)}</span>`);
+        meta.innerHTML = parts.join('') || '';
+
+        info.append(name, meta);
+        card.append(imgWrap, info);
+
+        if (p.fallback && p.search_query) {
+          const links = document.createElement('div');
+          links.className = 'lens-product-links';
+          const q = encodeURIComponent(p.search_query.trim());
+          const aGoogle = document.createElement('a');
+          aGoogle.href = 'https://www.google.com/search?tbm=shop&q=' + q;
+          aGoogle.target = '_blank';
+          aGoogle.rel = 'noopener noreferrer';
+          aGoogle.className = 'lens-link-google';
+          aGoogle.textContent = 'Google Shopping';
+          aGoogle.onclick = (e) => e.stopPropagation();
+          const aAmazon = document.createElement('a');
+          aAmazon.href = 'https://www.amazon.com/s?k=' + q;
+          aAmazon.target = '_blank';
+          aAmazon.rel = 'noopener noreferrer';
+          aAmazon.className = 'lens-link-amazon';
+          aAmazon.textContent = 'Amazon';
+          aAmazon.onclick = (e) => e.stopPropagation();
+          links.append(aGoogle, aAmazon);
+          card.append(links);
+        }
+
         listEl.appendChild(card);
       });
     } else {

@@ -1,6 +1,7 @@
 const providerSelect = document.getElementById('vision-provider');
 const dedalusInput = document.getElementById('dedalus-api-key');
 const geminiInput = document.getElementById('gemini-api-key');
+const serpapiInput = document.getElementById('serpapi-key');
 const webhookInput = document.getElementById('webhook-url');
 const saveBtn = document.getElementById('save');
 const statusEl = document.getElementById('options-status');
@@ -23,16 +24,19 @@ async function load() {
     visionProvider = 'dedalus',
     dedalusApiKey = '',
     geminiApiKey = '',
+    serpapiKey = '',
     webhookUrl = ''
   } = await chrome.storage.sync.get([
     'visionProvider',
     'dedalusApiKey',
     'geminiApiKey',
+    'serpapiKey',
     'webhookUrl'
   ]);
   providerSelect.value = visionProvider;
   dedalusInput.value = dedalusApiKey;
   geminiInput.value = geminiApiKey;
+  serpapiInput.value = serpapiKey;
   webhookInput.value = webhookUrl;
   updateKeyLabels();
 }
@@ -56,6 +60,7 @@ saveBtn.addEventListener('click', async () => {
       visionProvider,
       dedalusApiKey,
       geminiApiKey,
+      serpapiKey: serpapiInput.value.trim(),
       webhookUrl
     });
     showStatus('Settings saved.');

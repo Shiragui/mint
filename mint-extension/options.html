@@ -9,7 +9,7 @@
 <body>
   <div class="options">
     <h1>Lens Capture Settings</h1>
-    <p class="hint">Vision is powered by Dedalus Labs or Google Gemini. API keys are stored locally and only sent to the chosen provider.</p>
+    <p class="hint">Vision is powered by Dedalus Labs or Google Gemini. API keys are stored locally and only sent to the chosen provider. Add a SerpAPI key to show real product results (images, prices, links) instead of generic search links.</p>
     <label>
       <span>Vision provider</span>
       <select id="vision-provider">
@@ -24,6 +24,10 @@
     <label id="label-gemini">
       <span>Google Gemini API key</span>
       <input type="password" id="gemini-api-key" placeholder="From Google AI Studio" autocomplete="off">
+    </label>
+    <label>
+      <span>SerpAPI key (for real product results)</span>
+      <input type="password" id="serpapi-key" placeholder="From serpapi.com – shows product images, prices, links" autocomplete="off">
     </label>
     <label>
       <span>Webhook URL (POST)</span>
