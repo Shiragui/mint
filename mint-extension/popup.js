@@ -7,17 +7,11 @@ document.getElementById('start-capture').addEventListener('click', async () => {
     if (!tab?.id) {
       throw new Error('No active tab');
     }
-    try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'START_LENS_CAPTURE' });
-    } catch (e) {
-      if (e.message && e.message.includes('Receiving end does not exist')) {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        await chrome.tabs.sendMessage(tab.id, { type: 'START_LENS_CAPTURE' });
-      } else throw e;
-    }
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
+    await chrome.tabs.sendMessage(tab.id, { type: 'START_LENS_CAPTURE' });
     window.close();
   } catch (e) {
     btn.disabled = false;
