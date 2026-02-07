@@ -82,46 +82,50 @@
         width: min(420px, calc(100vw - 32px));
         max-height: 85vh;
         background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(34, 197, 94, 0.1);
         font-family: system-ui, -apple-system, sans-serif;
         overflow: hidden;
         display: flex;
         flex-direction: column;
         animation: lens-popup-in 0.2s ease;
       }
+      #lens-results-popup.dragging { cursor: move; }
       @keyframes lens-popup-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
       #lens-results-popup .lens-results-backdrop {
         position: fixed;
         inset: 0;
         z-index: -1;
-        background: rgba(0,0,0,0.4);
+        background: rgba(167, 243, 208, 0.35);
       }
       #lens-results-popup .lens-results-header {
         padding: 16px 20px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid #d1fae5;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
+        cursor: move;
+        background: #f0fdf4;
+        user-select: none;
       }
-      #lens-results-popup .lens-results-title { margin: 0; font-size: 16px; font-weight: 600; color: #111; }
+      #lens-results-popup .lens-results-title { margin: 0; font-size: 16px; font-weight: 600; color: #166534; }
       #lens-results-popup .lens-results-close {
         width: 32px; height: 32px;
-        border: none; background: #f3f4f6; color: #374151;
+        border: none; background: #d1fae5; color: #166534;
         border-radius: 8px; cursor: pointer; font-size: 18px; line-height: 1;
         display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
       }
-      #lens-results-popup .lens-results-close:hover { background: #e5e7eb; }
-      #lens-results-popup .lens-results-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
-      #lens-results-popup .lens-results-desc { font-size: 14px; color: #374151; line-height: 1.5; margin: 0 0 16px; }
+      #lens-results-popup .lens-results-close:hover { background: #a7f3d0; }
+      #lens-results-popup .lens-results-body { padding: 16px 20px; overflow-y: auto; flex: 1; background: #fff; }
       #lens-results-popup .lens-results-section { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
       #lens-results-popup .lens-product-card {
-        background: #f9fafb;
-        border-radius: 10px;
+        background: #f0fdf4;
+        border-radius: 12px;
         padding: 12px 14px;
         margin-bottom: 10px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #d1fae5;
         display: flex;
         gap: 12px;
         align-items: flex-start;
@@ -129,19 +133,22 @@
         color: inherit;
         transition: background 0.15s ease, border-color 0.15s ease;
       }
-      #lens-results-popup .lens-product-card:hover { background: #f3f4f6; border-color: #d1d5db; }
+      #lens-results-popup .lens-product-card:hover { background: #dcfce7; border-color: #a7f3d0; }
       #lens-results-popup .lens-product-card:last-child { margin-bottom: 0; }
       #lens-results-popup .lens-product-img {
         width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
       }
       #lens-results-popup .lens-product-img-placeholder {
-        width: 64px; height: 64px; background: #e5e7eb; border-radius: 8px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 20px; color: #9ca3af;
+        width: 64px; height: 64px; background: #d1fae5; border-radius: 8px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 20px; color: #6ee7b7;
       }
-      #lens-results-popup .lens-product-info { flex: 1; min-width: 0; }
-      #lens-results-popup .lens-product-name { font-weight: 600; font-size: 14px; color: #111; margin-bottom: 4px; line-height: 1.3; }
-      #lens-results-popup .lens-product-meta { font-size: 12px; color: #6b7280; }
-      #lens-results-popup .lens-product-price { font-weight: 600; color: #0d7a3c; }
+      #lens-results-popup .lens-product-info { flex: 1; min-width: 0; overflow: visible; }
+      #lens-results-popup .lens-product-name {
+        font-weight: 600; font-size: 14px; color: #111; margin-bottom: 6px; line-height: 1.3;
+        display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden; -webkit-box-orient: vertical;
+      }
+      #lens-results-popup .lens-product-meta { font-size: 12px; color: #166534; margin-top: 2px; }
+      #lens-results-popup .lens-product-price { font-weight: 600; color: #15803d; }
       #lens-results-popup .lens-product-source { color: #6b7280; }
       #lens-results-popup .lens-product-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
       #lens-results-popup .lens-product-links a {
@@ -188,8 +195,10 @@
     popup.id = id;
 
     function closePopup() {
-      popup.remove();
+      window.removeEventListener('mousemove', onHeaderMouseMove);
+      window.removeEventListener('mouseup', onHeaderMouseUp);
       window.removeEventListener('keydown', onEscape);
+      popup.remove();
     }
 
     function onEscape(e) {
@@ -209,21 +218,45 @@
     closeBtn.setAttribute('aria-label', 'Close');
     closeBtn.textContent = '×';
     closeBtn.addEventListener('click', closePopup);
+    closeBtn.addEventListener('mousedown', (e) => e.stopPropagation());
     header.appendChild(closeBtn);
+
+    let dragStart = null;
+    function onHeaderMouseDown(e) {
+      if (e.target === closeBtn) return;
+      const rect = popup.getBoundingClientRect();
+      popup.style.left = rect.left + 'px';
+      popup.style.top = rect.top + 'px';
+      popup.style.transform = 'none';
+      popup.classList.add('dragging');
+      dragStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    function onHeaderMouseMove(e) {
+      if (!dragStart) return;
+      popup.style.left = (e.clientX - dragStart.x) + 'px';
+      popup.style.top = (e.clientY - dragStart.y) + 'px';
+    }
+    function onHeaderMouseUp() {
+      if (dragStart) popup.classList.remove('dragging');
+      dragStart = null;
+    }
+    header.addEventListener('mousedown', onHeaderMouseDown);
+    window.addEventListener('mousemove', onHeaderMouseMove);
+    window.addEventListener('mouseup', onHeaderMouseUp);
+
     window.addEventListener('keydown', onEscape);
 
     const body = document.createElement('div');
     body.className = 'lens-results-body';
-    body.innerHTML = '<p class="lens-results-desc"></p><div class="lens-results-section">Products that look like your selection</div><div class="lens-results-list"></div>';
-    const descEl = body.querySelector('.lens-results-desc');
+    body.innerHTML = '<div class="lens-results-section">Products that look like your selection</div><div class="lens-results-list"></div>';
     const listEl = body.querySelector('.lens-results-list');
-    descEl.textContent = description || 'No description.';
+    const sectionEl = body.querySelector('.lens-results-section');
     if (webhookError) {
       const warn = document.createElement('p');
       warn.className = 'lens-no-products';
       warn.style.color = '#b45309';
       warn.textContent = 'Backend: ' + webhookError;
-      body.insertBefore(warn, body.querySelector('.lens-results-section'));
+      body.insertBefore(warn, sectionEl);
     }
     if (Array.isArray(similarProducts) && similarProducts.length > 0) {
       similarProducts.forEach((p) => {
