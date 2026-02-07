@@ -81,9 +81,9 @@
         z-index: 2147483649;
         width: min(420px, calc(100vw - 32px));
         max-height: 85vh;
-        background: #fff;
+        background: #ffffff !important;
         border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(34, 197, 94, 0.1);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(34, 197, 94, 0.2) !important;
         font-family: system-ui, -apple-system, sans-serif;
         overflow: hidden;
         display: flex;
@@ -96,36 +96,36 @@
         position: fixed;
         inset: 0;
         z-index: -1;
-        background: rgba(167, 243, 208, 0.35);
+        background: rgba(167, 243, 208, 0.5) !important;
       }
       #lens-results-popup .lens-results-header {
         padding: 16px 20px;
-        border-bottom: 1px solid #d1fae5;
+        border-bottom: 1px solid #86efac !important;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
         cursor: move;
-        background: #f0fdf4;
+        background: #ecfdf5 !important;
         user-select: none;
       }
-      #lens-results-popup .lens-results-title { margin: 0; font-size: 16px; font-weight: 600; color: #166534; }
+      #lens-results-popup .lens-results-title { margin: 0; font-size: 16px; font-weight: 600; color: #047857 !important; }
       #lens-results-popup .lens-results-close {
         width: 32px; height: 32px;
-        border: none; background: #d1fae5; color: #166534;
+        border: none; background: #6ee7b7 !important; color: #047857 !important;
         border-radius: 8px; cursor: pointer; font-size: 18px; line-height: 1;
         display: flex; align-items: center; justify-content: center;
         flex-shrink: 0;
       }
-      #lens-results-popup .lens-results-close:hover { background: #a7f3d0; }
-      #lens-results-popup .lens-results-body { padding: 16px 20px; overflow-y: auto; flex: 1; background: #fff; }
-      #lens-results-popup .lens-results-section { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+      #lens-results-popup .lens-results-close:hover { background: #34d399 !important; }
+      #lens-results-popup .lens-results-body { padding: 16px 20px; overflow-y: auto; flex: 1; background: #ffffff !important; }
+      #lens-results-popup .lens-results-section { font-size: 12px; font-weight: 600; color: #059669 !important; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
       #lens-results-popup .lens-product-card {
-        background: #f0fdf4;
+        background: #ecfdf5 !important;
         border-radius: 12px;
-        padding: 12px 14px;
-        margin-bottom: 10px;
-        border: 1px solid #d1fae5;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        border: 1px solid #a7f3d0 !important;
         display: flex;
         gap: 12px;
         align-items: flex-start;
@@ -133,22 +133,22 @@
         color: inherit;
         transition: background 0.15s ease, border-color 0.15s ease;
       }
-      #lens-results-popup .lens-product-card:hover { background: #dcfce7; border-color: #a7f3d0; }
+      #lens-results-popup .lens-product-card:hover { background: #d1fae5 !important; border-color: #6ee7b7 !important; }
       #lens-results-popup .lens-product-card:last-child { margin-bottom: 0; }
       #lens-results-popup .lens-product-img {
         width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
       }
       #lens-results-popup .lens-product-img-placeholder {
-        width: 64px; height: 64px; background: #d1fae5; border-radius: 8px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 20px; color: #6ee7b7;
+        width: 64px; height: 64px; background: #a7f3d0 !important; border-radius: 8px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 20px; color: #047857 !important;
       }
       #lens-results-popup .lens-product-info { flex: 1; min-width: 0; overflow: visible; }
       #lens-results-popup .lens-product-name {
         font-weight: 600; font-size: 14px; color: #111; margin-bottom: 6px; line-height: 1.3;
         display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden; -webkit-box-orient: vertical;
       }
-      #lens-results-popup .lens-product-meta { font-size: 12px; color: #166534; margin-top: 2px; }
-      #lens-results-popup .lens-product-price { font-weight: 600; color: #15803d; }
+      #lens-results-popup .lens-product-meta { font-size: 12px; color: #047857 !important; margin-top: 2px; }
+      #lens-results-popup .lens-product-price { font-weight: 600; color: #059669 !important; }
       #lens-results-popup .lens-product-source { color: #6b7280; }
       #lens-results-popup .lens-product-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
       #lens-results-popup .lens-product-links a {
