@@ -1,6 +1,8 @@
 const providerSelect = document.getElementById('vision-provider');
 const dedalusInput = document.getElementById('dedalus-api-key');
 const geminiInput = document.getElementById('gemini-api-key');
+const backendUrlInput = document.getElementById('backend-url');
+const authTokenInput = document.getElementById('auth-token');
 const webhookInput = document.getElementById('webhook-url');
 const saveBtn = document.getElementById('save');
 const statusEl = document.getElementById('options-status');
@@ -23,16 +25,22 @@ async function load() {
     visionProvider = 'dedalus',
     dedalusApiKey = '',
     geminiApiKey = '',
+    backendUrl = '',
+    authToken = '',
     webhookUrl = ''
   } = await chrome.storage.sync.get([
     'visionProvider',
     'dedalusApiKey',
     'geminiApiKey',
+    'backendUrl',
+    'authToken',
     'webhookUrl'
   ]);
   providerSelect.value = visionProvider;
   dedalusInput.value = dedalusApiKey;
   geminiInput.value = geminiApiKey;
+  backendUrlInput.value = backendUrl;
+  authTokenInput.value = authToken;
   webhookInput.value = webhookUrl;
   updateKeyLabels();
 }
@@ -41,12 +49,15 @@ saveBtn.addEventListener('click', async () => {
   const visionProvider = providerSelect.value;
   const dedalusApiKey = dedalusInput.value.trim();
   const geminiApiKey = geminiInput.value.trim();
+  const backendUrl = backendUrlInput.value.trim();
+  const authToken = authTokenInput.value.trim();
   const webhookUrl = webhookInput.value.trim();
 
+  const useBackend = !!backendUrl;
   const activeKey = visionProvider === 'gemini' ? geminiApiKey : dedalusApiKey;
-  if (!activeKey) {
+  if (!useBackend && !activeKey) {
     const name = visionProvider === 'gemini' ? 'Gemini' : 'Dedalus Labs';
-    showStatus('Please enter the ' + name + ' API key.', 'error');
+    showStatus('Either set Backend URL or enter the ' + name + ' API key.', 'error');
     return;
   }
 
@@ -56,6 +67,8 @@ saveBtn.addEventListener('click', async () => {
       visionProvider,
       dedalusApiKey,
       geminiApiKey,
+      backendUrl,
+      authToken,
       webhookUrl
     });
     showStatus('Settings saved.');

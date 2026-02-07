@@ -224,28 +224,51 @@ Sync points: agree on **API contract** (request/response for `/analyze`, `/items
 
 ---
 
-## 9. Repo Structure Suggestion
+## 9. Repo Structure (Current)
 
 ```
 devfest2026/
 ├── README.md                 # Project overview + how to run
-├── BUILD_GUIDE.md           # This file
-├── extension/                # Renamed mint-extension
+├── BUILD_GUIDE.md            # This file
+├── mint-extension/           # Browser extension (Lens Capture)
 │   ├── manifest.json
-│   ├── background.js
-│   ├── content.js
+│   ├── background.js         # Capture, analyze (Dedalus or backend), save item
+│   ├── content.js           # Overlay, results popup, Save button
 │   ├── popup.js / popup.html
-│   └── options.js / options.html
-├── backend/                  # FastAPI or Node
-│   ├── main.py or src/
-│   ├── agent/                # DedalusRunner + tools
+│   └── options.js / options.html  # API keys, Backend URL, Auth token
+├── backend/                  # FastAPI
+│   ├── main.py               # App, CORS, /health, /analyze, /items
+│   ├── config.py
 │   ├── routes/
-│   └── requirements.txt or package.json
-└── web/                      # Next.js or Vite
-    ├── src/
+│   │   ├── analyze.py        # Vision via Dedalus API, similar products
+│   │   └── items.py          # In-memory save/list (MVP)
+│   ├── requirements.txt
+│   └── .env.example
+└── web/                      # Next.js dashboard
+    ├── src/app/
+    │   ├── page.tsx          # Home
+    │   ├── login/page.tsx    # Token login
+    │   └── dashboard/page.tsx # Saved items list
     ├── package.json
-    └── ...
+    └── .env.example          # NEXT_PUBLIC_API_URL
 ```
+
+### How to run (integrated stack)
+
+1. **Backend**
+   - `cd backend && pip install -r requirements.txt`
+   - Copy `.env.example` to `.env`, set `DEDALUS_API_KEY`
+   - For local dev without auth: set `REQUIRE_AUTH=0` in `.env`
+   - `uvicorn main:app --reload` (or `python main.py`)
+
+2. **Extension**
+   - Open `chrome://extensions`, enable Developer mode, Load unpacked → `mint-extension`
+   - In extension Options: set **Backend URL** to `http://localhost:8000`, **Auth token** to any string (e.g. `my-token`). Optionally leave Backend URL empty to use Dedalus/Gemini from the extension as before.
+
+3. **Website**
+   - `cd web && npm install && npm run dev`
+   - Create `web/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8000`
+   - Open http://localhost:3000 → Log in with the same token → Dashboard shows saved items.
 
 ---
 
@@ -257,4 +280,4 @@ devfest2026/
 - **OpenRouter:** Use as alternate or fallback for vision/model to satisfy “use OpenRouter.”
 - **Team:** Extension, Backend+Agent, Website, Full-stack/DevOps; agree API and auth in Phase 1 and iterate in 3–4 weeks to a demo-ready MVP.
 
-If you want, next we can turn Phase 1 into concrete tasks in your repo (e.g. add `backend/` with a minimal FastAPI + Dedalus vision endpoint and update the extension to call it).
+**Integration done:** The repo now has `backend/`, `web/`, and the extension wired to the backend (options: Backend URL + Auth token). When Backend URL is set, capture is sent to `POST /analyze` and **Save** sends to `POST /items`; the dashboard reads `GET /items`.

@@ -26,10 +26,19 @@
       <input type="password" id="gemini-api-key" placeholder="From Google AI Studio" autocomplete="off">
     </label>
     <label>
+      <span>Backend URL (optional)</span>
+      <input type="url" id="backend-url" placeholder="http://localhost:8000">
+    </label>
+    <label>
+      <span>Auth token (optional)</span>
+      <input type="password" id="auth-token" placeholder="Same token as on the website" autocomplete="off">
+    </label>
+    <p class="hint">If set, capture is sent to your backend for analysis and you can save items to view on the website.</p>
+    <label>
       <span>Webhook URL (POST)</span>
       <input type="url" id="webhook-url" placeholder="https://your-site.com/api/lens">
     </label>
-    <p class="hint">The extension will POST a JSON body: <code>{ "image": "base64…", "description": "…", "timestamp": "…" }</code></p>
+    <p class="hint">Used only when Backend URL is empty. The extension will POST: <code>{ "image": "base64…", "description": "…", "timestamp": "…" }</code></p>
     <button type="button" id="save" class="btn btn-primary">Save</button>
     <p id="options-status" class="status"></p>
   </div>

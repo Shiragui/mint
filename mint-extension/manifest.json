@@ -3,25 +3,18 @@
   "name": "Lens Capture",
   "version": "1.0.0",
   "description": "Select any area on a webpage, analyze it with Vision AI, and send the result to your backend.",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "storage"
-  ],
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "https://api.dedaluslabs.ai/*",
     "https://generativelanguage.googleapis.com/*",
-    "<all_urls>"
+    "<all_urls>",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "background": {"service_worker": "background.js"},
   "action": {
     "default_popup": "popup.html",
     "default_title": "Lens Capture - Select area to analyze"
   },
-  "options_ui": {
-    "page": "options.html",
-    "open_in_tab": true
-  }
+  "options_ui": {"page": "options.html", "open_in_tab": true}
 }

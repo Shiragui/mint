@@ -108,7 +108,10 @@ def _parse_similar_products(text: str) -> list:
 async def analyze(body: AnalyzeRequest, user_id: str | None, api_key: str) -> dict:
     if not api_key:
         raise HTTPException(status_code=500, detail="DEDALUS_API_KEY is not set on the server")
-    description = await call_dedalus_vision(api_key, body.image, body.mimeType or "image/png")
+    try:
+        description = await call_dedalus_vision(api_key, body.image, body.mimeType or "image/png")
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     similar_products = await get_similar_products(api_key, description)
     return {
         "description": description,

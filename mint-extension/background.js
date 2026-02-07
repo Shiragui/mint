@@ -19,6 +19,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
   }
+  if (message.type === 'SAVE_ITEM') {
+    handleSaveItem(message.payload)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
 });
 
 async function handleCaptureTab(tabId) {
@@ -36,23 +42,56 @@ async function getStoredConfig() {
     'visionProvider',
     'dedalusApiKey',
     'geminiApiKey',
+    'backendUrl',
+    'authToken',
     'webhookUrl'
   ]);
   return {
     visionProvider: out.visionProvider || 'dedalus',
     dedalusApiKey: out.dedalusApiKey || '',
     geminiApiKey: out.geminiApiKey || '',
+    backendUrl: (out.backendUrl || '').trim(),
+    authToken: (out.authToken || '').trim(),
     webhookUrl: out.webhookUrl || ''
   };
 }
 
 async function handleAnalyzeAndSend(payload) {
-  const { croppedBase64, mimeType } = payload;
+  const { croppedBase64, mimeType, intent = 'product' } = payload;
   if (!croppedBase64) throw new Error('No image data');
 
   const config = await getStoredConfig();
-  const provider = config.visionProvider || 'dedalus';
 
+  // Prefer backend when configured
+  if (config.backendUrl) {
+    const base = config.backendUrl.replace(/\/$/, '');
+    const url = base + '/analyze';
+    const headers = { 'Content-Type': 'application/json' };
+    if (config.authToken) headers['Authorization'] = 'Bearer ' + config.authToken;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        image: croppedBase64,
+        mimeType: mimeType || 'image/png',
+        intent
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      if (res.status === 401) throw new Error('Invalid or missing auth token. Check extension options.');
+      throw new Error(res.status + ' ' + (errText || res.statusText));
+    }
+    const data = await res.json();
+    return {
+      description: data.description || '',
+      similarProducts: data.similarProducts || data.results || [],
+      sentToWebhook: false,
+      webhookError: null
+    };
+  }
+
+  const provider = config.visionProvider || 'dedalus';
   const apiKey =
     provider === 'gemini'
       ? config.geminiApiKey?.trim()
@@ -60,7 +99,7 @@ async function handleAnalyzeAndSend(payload) {
 
   if (!apiKey) {
     const name = provider === 'gemini' ? 'Gemini' : 'Dedalus Labs';
-    throw new Error(`${name} API key is not set. Open extension options to add it.`);
+    throw new Error(`${name} API key is not set. Or set Backend URL in extension options.`);
   }
 
   let description;
@@ -110,6 +149,32 @@ async function handleAnalyzeAndSend(payload) {
     webhookError,
     similarProducts
   };
+}
+
+async function handleSaveItem(payload) {
+  const config = await getStoredConfig();
+  if (!config.backendUrl) throw new Error('Backend URL is not set. Open extension options.');
+  const base = config.backendUrl.replace(/\/$/, '');
+  const url = base + '/items';
+  const headers = { 'Content-Type': 'application/json' };
+  if (config.authToken) headers['Authorization'] = 'Bearer ' + config.authToken;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      type: payload.type || 'product',
+      title: payload.title || '',
+      description: payload.description || '',
+      metadata: payload.metadata || {},
+      source_url: payload.source_url || ''
+    })
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    if (res.status === 401) throw new Error('Invalid or missing auth token.');
+    throw new Error(res.status + ' ' + (errText || res.statusText));
+  }
+  return await res.json();
 }
 
 function formatWebhookError(err) {
