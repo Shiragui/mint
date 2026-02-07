@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lens Capture – Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options">
+    <h1>Lens Capture Settings</h1>
+    <p class="hint">Vision is powered by Dedalus Labs or Google Gemini. API keys are stored locally and only sent to the chosen provider.</p>
+    <label>
+      <span>Vision provider</span>
+      <select id="vision-provider">
+        <option value="dedalus">Dedalus Labs</option>
+        <option value="gemini">Google Gemini</option>
+      </select>
+    </label>
+    <label id="label-dedalus">
+      <span>Dedalus Labs API key</span>
+      <input type="password" id="dedalus-api-key" placeholder="From Dedalus Dashboard" autocomplete="off">
+    </label>
+    <label id="label-gemini">
+      <span>Google Gemini API key</span>
+      <input type="password" id="gemini-api-key" placeholder="From Google AI Studio" autocomplete="off">
+    </label>
+    <label>
+      <span>Webhook URL (POST)</span>
+      <input type="url" id="webhook-url" placeholder="https://your-site.com/api/lens">
+    </label>
+    <p class="hint">The extension will POST a JSON body: <code>{ "image": "base64…", "description": "…", "timestamp": "…" }</code></p>
+    <button type="button" id="save" class="btn btn-primary">Save</button>
+    <p id="options-status" class="status"></p>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
