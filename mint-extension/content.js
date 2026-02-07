@@ -162,6 +162,29 @@
       #lens-results-popup .lens-product-links a.lens-link-amazon { background: #232f3e; }
       #lens-results-popup .lens-product-links a.lens-link-google { background: #4285f4; }
       #lens-results-popup .lens-no-products { font-size: 13px; color: #6b7280; padding: 8px 0; }
+      #lens-video-bubble {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #34d399 !important;
+        box-shadow: 0 4px 16px rgba(52, 211, 153, 0.4) !important;
+        cursor: pointer;
+        z-index: 2147483646;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        color: #047857 !important;
+        user-select: none;
+        border: 2px solid #10b981 !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      #lens-video-bubble.visible { display: flex; animation: lens-bubble-in 0.3s ease; }
+      @keyframes lens-bubble-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+      #lens-video-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(52, 211, 153, 0.5) !important; }
     `;
   }
 
@@ -498,12 +521,100 @@
       window.removeEventListener('keydown', onKeyDown);
       const el = document.getElementById(OVERLAY_ID);
       if (el) el.remove();
+      const b = document.getElementById('lens-video-bubble');
+      if (b) {
+        b.classList.add('visible');
+        b.style.display = 'flex';
+      }
     }
 
     overlay.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('keydown', onKeyDown);
+  }
+
+  function createVideoBubble() {
+    const BUBBLE_ID = 'lens-video-bubble';
+    let bubble = document.getElementById(BUBBLE_ID);
+    if (bubble) return bubble;
+
+    injectStyles();
+    bubble = document.createElement('div');
+    bubble.id = BUBBLE_ID;
+    bubble.setAttribute('aria-label', 'Find similar products');
+    bubble.title = 'Click to select product to search';
+    bubble.innerHTML = '🔍';
+    bubble.style.display = 'none';
+
+    let dragStart = null;
+    let didDrag = false;
+
+    bubble.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      didDrag = false;
+      const rect = bubble.getBoundingClientRect();
+      bubble.style.left = rect.left + 'px';
+      bubble.style.top = rect.top + 'px';
+      bubble.style.right = 'auto';
+      bubble.style.bottom = 'auto';
+      dragStart = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top };
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragStart) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+      bubble.style.left = (dragStart.left + dx) + 'px';
+      bubble.style.top = (dragStart.top + dy) + 'px';
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragStart = null;
+    });
+
+    bubble.addEventListener('click', (e) => {
+      if (didDrag) return;
+      e.preventDefault();
+      e.stopPropagation();
+      bubble.classList.remove('visible');
+      bubble.style.display = 'none';
+      runSnipping();
+    });
+
+    document.body.appendChild(bubble);
+    return bubble;
+  }
+
+  function showVideoBubble() {
+    const bubble = createVideoBubble();
+    bubble.style.display = 'flex';
+    bubble.classList.add('visible');
+  }
+
+  function observeVideoPlay() {
+    function attachPlayListener(video) {
+      if (video._lensPlayListener) return;
+      video._lensPlayListener = true;
+      video.addEventListener('play', () => showVideoBubble());
+    }
+    document.querySelectorAll('video').forEach(attachPlayListener);
+    document.querySelectorAll('video').forEach((v) => { if (!v.paused) showVideoBubble(); });
+  }
+
+  function initVideoBubble() {
+    injectStyles();
+    observeVideoPlay();
+    const mo = new MutationObserver(() => observeVideoPlay());
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoBubble);
+  } else {
+    initVideoBubble();
   }
 
   chrome.runtime.onMessage.addListener((message) => {
