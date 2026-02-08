@@ -198,6 +198,56 @@ export async function deleteBookmark(bookmarkId, userId) {
 }
 
 /**
+ * Public feed: all boards from all users with owner username.
+ */
+export async function getPublicBoards() {
+  await ensureTables()
+  const rows = await sql`
+    SELECT b.id, b.name, b.created_at, u.username as owner_name
+    FROM boards b
+    JOIN users u ON b.user_id = u.id
+    ORDER BY b.created_at DESC
+  `
+  return rows.map(r => ({
+    id: String(r.id),
+    name: r.name,
+    owner_name: r.owner_name,
+    created_at: r.created_at,
+  }))
+}
+
+/**
+ * Public: get bookmarks for a board (read-only, any user can view).
+ */
+export async function getBoardBookmarksPublic(boardId) {
+  await ensureTables()
+  const [board] = await sql`
+    SELECT b.id, b.name, u.username as owner_name
+    FROM boards b
+    JOIN users u ON b.user_id = u.id
+    WHERE b.id = ${boardId}
+  `
+  if (!board) return null
+  const rows = await sql`
+    SELECT id, image_base64, description, results_json, source_url, created_at
+    FROM bookmarks
+    WHERE board_id = ${boardId}
+    ORDER BY created_at DESC
+  `
+  return {
+    board: { id: String(board.id), name: board.name, owner_name: board.owner_name },
+    bookmarks: rows.map(r => ({
+      id: String(r.id),
+      image_base64: r.image_base64,
+      description: r.description,
+      results: Array.isArray(r.results_json) ? r.results_json : [],
+      source_url: r.source_url,
+      created_at: r.created_at,
+    })),
+  }
+}
+
+/**
  * Save lens capture from webhook - Base64 image + AI description.
  */
 export async function insertLensVault(imageBase64, label, metadata = {}) {

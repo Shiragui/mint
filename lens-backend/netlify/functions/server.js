@@ -14,6 +14,8 @@ import {
   getBoards,
   createBoard,
   updateBookmarkBoard,
+  getPublicBoards,
+  getBoardBookmarksPublic,
   insertLensVault,
 } from './db.js'
 import { hashPassword, verifyPassword, createAccessToken, decodeToken } from './auth.js'
@@ -198,6 +200,26 @@ app.delete('/api/bookmarks/:bookmarkId', requireToken, async (req, res) => {
     const ok = await deleteBookmark(req.params.bookmarkId, user.id)
     if (!ok) return res.status(404).json({ detail: 'Bookmark not found' })
     return res.json({ status: 'deleted' })
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+// --- Public Feed (no auth required) ---
+app.get('/api/feed/boards', async (req, res) => {
+  try {
+    const boards = await getPublicBoards()
+    return res.json({ boards })
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+app.get('/api/feed/boards/:boardId', async (req, res) => {
+  try {
+    const data = await getBoardBookmarksPublic(req.params.boardId)
+    if (!data) return res.status(404).json({ detail: 'Board not found' })
+    return res.json(data)
   } catch (err) {
     return res.status(500).json({ detail: err.message })
   }

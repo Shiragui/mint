@@ -205,6 +205,32 @@ body {
   color: var(--mint-darker);
 }
 
+.main-nav {
+  display: flex;
+  gap: 4px;
+  margin: 0 24px;
+}
+
+.nav-link {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-link:hover {
+  color: var(--mint-dark);
+  background: var(--mint-pale);
+}
+
+.nav-link.active {
+  color: var(--mint-darker);
+  background: var(--mint-border);
+}
+
 .header-actions { display: flex; gap: 10px; }
 
 .btn-ghost {
@@ -447,6 +473,60 @@ body {
   border: 1px solid var(--mint-border);
   background: var(--white);
   cursor: pointer;
+}
+
+/* Feed */
+.feed-main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 36px 28px;
+}
+
+.feed-boards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.feed-board-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  border: 1px solid var(--mint-border);
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.feed-board-card:hover {
+  border-color: var(--mint);
+  box-shadow: var(--shadow-md);
+}
+
+.feed-board-card-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mint-darker);
+}
+
+.feed-board-card-owner {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.feed-board-view {
+  margin-top: 24px;
+}
+
+.feed-board-owner {
+  margin: -8px 0 20px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.feed-bookmarks {
+  margin-top: 16px;
 }
 
 /* Modal */

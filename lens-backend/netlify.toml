@@ -21,6 +21,16 @@
   to = "/index.html"
   status = 200
 
+[[redirects]]
+  from = "/profile"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/feed"
+  to = "/index.html"
+  status = 200
+
 # API and auth: proxy to serverless function
 [[redirects]]
   from = "/api/*"

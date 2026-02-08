@@ -43,6 +43,15 @@ async function fetchApi(path, opts = {}) {
   return res.json().catch(() => ({}));
 }
 
+async function fetchPublic(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || err.message || 'Request failed');
+  }
+  return res.json().catch(() => ({}));
+}
+
 async function login(username, password) {
   const body = new URLSearchParams();
   body.append('username', username);
@@ -75,12 +84,31 @@ async function register(username, password) {
   setToken(data.access_token);
 }
 
-let state = { boards: [], bookmarks: [], selectedBoardId: null };
+let state = { boards: [], bookmarks: [], selectedBoardId: null, currentTab: 'profile' };
 
 function escapeHtml(s) {
   const div = document.createElement('div');
   div.textContent = s;
   return div.innerHTML;
+}
+
+function showProfileTab() {
+  state.currentTab = 'profile';
+  document.getElementById('profile-main').classList.remove('hidden');
+  document.getElementById('feed-main').classList.add('hidden');
+  document.getElementById('nav-profile').classList.add('active');
+  document.getElementById('nav-feed').classList.remove('active');
+}
+
+function showFeedTab() {
+  state.currentTab = 'feed';
+  document.getElementById('profile-main').classList.add('hidden');
+  document.getElementById('feed-main').classList.remove('hidden');
+  document.getElementById('nav-profile').classList.remove('active');
+  document.getElementById('nav-feed').classList.add('active');
+  document.getElementById('feed-board-view').classList.add('hidden');
+  document.getElementById('feed-boards-list').classList.remove('hidden');
+  loadFeed();
 }
 
 function renderBoards() {
@@ -104,7 +132,7 @@ function renderBoards() {
   newBoardBtn.classList.toggle('hidden', !createForm.classList.contains('hidden'));
 }
 
-function renderBookmark(b) {
+function renderBookmark(b, isFeed = false) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
   card.dataset.id = b.id;
@@ -117,8 +145,19 @@ function renderBookmark(b) {
   const defaultBoardId = state.boards[0]?.id || '';
   const boardId = b.board_id || defaultBoardId;
 
+  const moveSection = isFeed ? '' : `
+    <div class="bookmark-move">
+      <label>Move to:</label>
+      <select class="bookmark-board-select" data-id="${escapeHtml(b.id)}">
+        ${state.boards.map((br) => `<option value="${br.id}" ${br.id === boardId ? 'selected' : ''}>${escapeHtml(br.name)}</option>`).join('')}
+      </select>
+    </div>
+  `;
+
+  const deleteBtn = isFeed ? '' : '<button class="bookmark-delete" title="Delete" aria-label="Delete bookmark">×</button>';
+
   card.innerHTML = `
-    <button class="bookmark-delete" title="Delete" aria-label="Delete bookmark">×</button>
+    ${deleteBtn}
     ${thumb}
     <div class="bookmark-info">
       <p class="bookmark-desc">${escapeHtml(b.description || 'No description')}</p>
@@ -126,25 +165,20 @@ function renderBookmark(b) {
         <span class="bookmark-results-count">${count} similar product${count !== 1 ? 's' : ''}</span>
         · ${new Date(b.created_at).toLocaleDateString()}
       </p>
-      <div class="bookmark-move">
-        <label>Move to:</label>
-        <select class="bookmark-board-select" data-id="${escapeHtml(b.id)}">
-          ${state.boards.map((br) => `<option value="${br.id}" ${br.id === boardId ? 'selected' : ''}>${escapeHtml(br.name)}</option>`).join('')}
-        </select>
-      </div>
+      ${moveSection}
     </div>
   `;
   card.style.position = 'relative';
-  card.querySelector('.bookmark-delete').addEventListener('click', (e) => {
-    e.stopPropagation();
-    deleteBookmark(b.id);
-  });
-  card.querySelector('.bookmark-board-select').addEventListener('change', (e) => {
-    e.stopPropagation();
-    moveBookmark(b.id, e.target.value);
-  });
+  if (!isFeed) {
+    const delBtn = card.querySelector('.bookmark-delete');
+    if (delBtn) delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteBookmark(b.id); });
+    const sel = card.querySelector('.bookmark-board-select');
+    if (sel) sel.addEventListener('change', (e) => { e.stopPropagation(); moveBookmark(b.id, e.target.value); });
+  }
   card.addEventListener('click', (e) => {
-    if (!e.target.closest('.bookmark-delete, .bookmark-board-select')) openDetail(b.id);
+    if (isFeed || !e.target.closest('.bookmark-delete, .bookmark-board-select')) {
+      openDetail(b, isFeed);
+    }
   });
   return card;
 }
@@ -167,7 +201,7 @@ async function moveBookmark(id, boardId) {
   }
 }
 
-function renderDetail(b) {
+function renderDetail(b, isReadOnly = false) {
   const body = document.getElementById('detail-body');
   const img = b.image_base64
     ? `<img class="detail-img" src="data:image/png;base64,${b.image_base64}" alt="">`
@@ -181,6 +215,9 @@ function renderDetail(b) {
       </div>
     </a>
   `).join('');
+  const deleteBtn = isReadOnly ? '' : `
+    <button id="detail-delete-btn" class="btn-danger" style="margin-top:16px;padding:8px 16px;background:#b91c1c;color:white;border:none;border-radius:8px;cursor:pointer">Delete bookmark</button>
+  `;
   body.innerHTML = `
     ${img}
     <p class="detail-desc">${escapeHtml(b.description || 'No description')}</p>
@@ -188,9 +225,22 @@ function renderDetail(b) {
       <h3>Similar products</h3>
       ${results.length ? results : '<p style="color:#6b7280;font-size:14px">No results saved.</p>'}
     </div>
-    <button id="detail-delete-btn" class="btn-danger" style="margin-top:16px;padding:8px 16px;background:#b91c1c;color:white;border:none;border-radius:8px;cursor:pointer">Delete bookmark</button>
+    ${deleteBtn}
   `;
-  document.getElementById('detail-delete-btn').addEventListener('click', () => deleteBookmark(b.id));
+  const delBtn = document.getElementById('detail-delete-btn');
+  if (delBtn) delBtn.addEventListener('click', () => deleteBookmark(b.id));
+}
+
+async function openDetail(b, isReadOnly = false) {
+  if (!isReadOnly && typeof b === 'string') {
+    b = await fetchApi(`/api/bookmarks/${b}`);
+  }
+  renderDetail(b, isReadOnly);
+  document.getElementById('detail-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('detail-modal').classList.add('hidden');
 }
 
 function renderBookmarks() {
@@ -206,8 +256,7 @@ function renderBookmarks() {
   }
   empty.classList.add('hidden');
   filtered.forEach((b) => {
-    const card = renderBookmark(b);
-    list.appendChild(card);
+    list.appendChild(renderBookmark(b, false));
   });
 }
 
@@ -229,19 +278,56 @@ async function loadAll() {
   }
 }
 
-async function openDetail(id) {
-  const b = await fetchApi(`/api/bookmarks/${id}`);
-  renderDetail(b);
-  document.getElementById('detail-modal').classList.remove('hidden');
+async function loadFeed() {
+  try {
+    const data = await fetchPublic('/api/feed/boards');
+    const boards = data.boards || [];
+    const list = document.getElementById('feed-boards-list');
+    const empty = document.getElementById('feed-empty');
+    list.innerHTML = '';
+    if (boards.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    boards.forEach((board) => {
+      const card = document.createElement('div');
+      card.className = 'feed-board-card';
+      card.innerHTML = `
+        <h3 class="feed-board-card-title">${escapeHtml(board.name)}</h3>
+        <p class="feed-board-card-owner">by ${escapeHtml(board.owner_name)}</p>
+      `;
+      card.addEventListener('click', () => openFeedBoard(board.id));
+      list.appendChild(card);
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
-function closeModal() {
-  document.getElementById('detail-modal').classList.add('hidden');
+async function openFeedBoard(boardId) {
+  try {
+    const data = await fetchPublic(`/api/feed/boards/${boardId}`);
+    document.getElementById('feed-boards-list').classList.add('hidden');
+    document.getElementById('feed-empty').classList.add('hidden');
+    const view = document.getElementById('feed-board-view');
+    view.classList.remove('hidden');
+    document.getElementById('feed-board-title').textContent = data.board.name;
+    document.getElementById('feed-board-owner').textContent = `by ${data.board.owner_name}`;
+    const list = document.getElementById('feed-board-bookmarks');
+    list.innerHTML = '';
+    (data.bookmarks || []).forEach((b) => {
+      list.appendChild(renderBookmark(b, true));
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   if (getToken()) {
     showView('dashboard-view');
+    showProfileTab();
     loadAll();
   } else {
     showView('login-view');
@@ -259,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await login(username, password);
       showView('dashboard-view');
+      showProfileTab();
       loadAll();
     } catch (err) {
       showError('login-error', err.message);
@@ -285,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await register(username, password);
       showView('dashboard-view');
+      showProfileTab();
       loadAll();
     } catch (err) {
       showError('signup-error', err.message);
@@ -306,6 +394,21 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-logout').addEventListener('click', () => {
     setToken(null);
     showView('login-view');
+  });
+
+  document.getElementById('nav-profile').addEventListener('click', (e) => {
+    e.preventDefault();
+    showProfileTab();
+  });
+
+  document.getElementById('nav-feed').addEventListener('click', (e) => {
+    e.preventDefault();
+    showFeedTab();
+  });
+
+  document.getElementById('feed-back-btn').addEventListener('click', () => {
+    document.getElementById('feed-board-view').classList.add('hidden');
+    document.getElementById('feed-boards-list').classList.remove('hidden');
   });
 
   document.getElementById('btn-new-board').addEventListener('click', () => {

@@ -77,11 +77,15 @@
           <span class="header-logo">🔍</span>
           <h1>MINT</h1>
         </div>
+        <nav class="main-nav">
+          <a href="#" id="nav-profile" class="nav-link active">Profile</a>
+          <a href="#" id="nav-feed" class="nav-link">Feed</a>
+        </nav>
         <div class="header-actions">
           <button id="btn-logout" class="btn-ghost">Log out</button>
         </div>
       </header>
-      <main class="dashboard-main">
+      <main class="dashboard-main" id="profile-main">
         <aside class="boards-sidebar">
           <h2 class="boards-title">Boards</h2>
           <div id="boards-list"></div>
@@ -98,10 +102,24 @@
           <div id="empty-state" class="empty-state hidden">
             <div class="empty-icon">📦</div>
             <h3>No bookmarks yet</h3>
-            <p>Use the Lens Capture extension to select products on any page and save them here.</p>
+            <p>Use the MINT extension to capture products on any page and save them to your boards.</p>
           </div>
           <div id="bookmarks-list" class="bookmarks-grid"></div>
         </section>
+      </main>
+      <main class="feed-main hidden" id="feed-main">
+        <div id="feed-boards-list" class="feed-boards-grid"></div>
+        <div id="feed-board-view" class="feed-board-view hidden">
+          <button type="button" id="feed-back-btn" class="btn-ghost">← Back to feed</button>
+          <h2 id="feed-board-title"></h2>
+          <p id="feed-board-owner" class="feed-board-owner"></p>
+          <div id="feed-board-bookmarks" class="bookmarks-grid feed-bookmarks"></div>
+        </div>
+        <div id="feed-empty" class="empty-state hidden">
+          <div class="empty-icon">📋</div>
+          <h3>No boards yet</h3>
+          <p>Be the first to create a board and share your finds!</p>
+        </div>
       </main>
     </div>
   </div>
