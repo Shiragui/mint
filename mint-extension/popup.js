@@ -1,4 +1,4 @@
-const API_BASE = 'https://greenframes.netlify.app';
+const API_BASE = 'https://mintgreen.netlify.app';
 
 const loginView = document.getElementById('login-view');
 const loggedInView = document.getElementById('logged-in-view');
@@ -35,19 +35,27 @@ loginForm.addEventListener('submit', async (e) => {
   loginError.style.display = 'none';
 
   try {
-    const res = await fetch(API_BASE + '/auth/login', {
+    const baseUrl = (await chrome.storage.local.get(['bookmarkApiUrl'])).bookmarkApiUrl || API_BASE;
+    const url = baseUrl.replace(/\/$/, '') + '/auth/login';
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username, password }).toString()
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(res.status === 404 ? 'Backend not found. Set the correct URL in Options.' : 'Invalid response from server');
+    }
 
     if (!res.ok) {
       throw new Error(data.detail || 'Sign in failed');
     }
 
     await chrome.storage.local.set({
-      bookmarkApiUrl: API_BASE,
+      bookmarkApiUrl: baseUrl.replace(/\/$/, ''),
       bookmarkToken: data.access_token
     });
     passwordInput.value = '';

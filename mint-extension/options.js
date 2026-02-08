@@ -48,7 +48,15 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ username, password }).toString()
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(res.status === 404
+          ? 'Backend not found (404). Check the URL is correct (e.g. https://mintgreen.netlify.app)'
+          : text || 'Invalid response from server');
+      }
 
       if (!res.ok) {
         throw new Error(data.detail || 'Login failed');

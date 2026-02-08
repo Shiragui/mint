@@ -7,8 +7,8 @@ const CONFIG = {
   geminiApiKey: 'AIzaSyDEwTUYS8-IpPo6yHs1mNE5RjzYdooqJGg',
   serpapiKey: '2a4a0b23469d3fcc65be5f2a213012ffb78a004c55cfe48931d439eb0ec93725',
   imgbbApiKey: '0e5ed3037d4575efa80c6a9b29c80f3d',
-  webhookUrl: 'https://greenframes.netlify.app/api/lens',
+  webhookUrl: 'https://mintgreen.netlify.app/api/lens',
   webhookApiKey: 'jkflds9320493mfsdkljfdslk',
-  bookmarkApiUrl: 'https://greenframes.netlify.app',
+  bookmarkApiUrl: 'https://mintgreen.netlify.app',
   bookmarkToken: 'jkflds9320493mfsdkljfdslk'
 };
