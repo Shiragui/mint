@@ -552,6 +552,8 @@
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
+  const MAX_IMAGE_DIM = 1200; // Resize to reduce payload and avoid 413
+
   function cropImageToSelection(dataUrl, rect, dpr) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -559,18 +561,23 @@
       img.onload = () => {
         const c = document.createElement('canvas');
         const scale = dpr || window.devicePixelRatio || 1;
+        let w = Math.round(rect.w * scale);
+        let h = Math.round(rect.h * scale);
         const x = Math.round(rect.x * scale);
         const y = Math.round(rect.y * scale);
-        const w = Math.round(rect.w * scale);
-        const h = Math.round(rect.h * scale);
         if (w <= 0 || h <= 0) {
           reject(new Error('Invalid selection size'));
           return;
         }
+        if (w > MAX_IMAGE_DIM || h > MAX_IMAGE_DIM) {
+          const r = Math.min(MAX_IMAGE_DIM / w, MAX_IMAGE_DIM / h);
+          w = Math.round(w * r);
+          h = Math.round(h * r);
+        }
         c.width = w;
         c.height = h;
         const ctx = c.getContext('2d');
-        ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+        ctx.drawImage(img, x, y, Math.round(rect.w * scale), Math.round(rect.h * scale), 0, 0, w, h);
         try {
           const base64 = c.toDataURL('image/png').split(',')[1];
           resolve({ base64, mimeType: 'image/png' });
