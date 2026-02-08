@@ -84,7 +84,7 @@ async function register(username, password) {
   setToken(data.access_token);
 }
 
-let state = { boards: [], bookmarks: [], selectedBoardId: null, currentTab: 'profile', feedBoards: [], likedBoards: [] };
+let state = { boards: [], bookmarks: [], selectedBoardId: null, currentTab: 'profile', feedBoards: [], likedBoards: [], boardViewFrom: 'feed' };
 
 function escapeHtml(s) {
   const div = document.createElement('div');
@@ -110,6 +110,8 @@ function showFeedTab() {
   document.getElementById('nav-profile').classList.remove('active');
   document.getElementById('nav-feed').classList.add('active');
   document.getElementById('nav-liked').classList.remove('active');
+  document.getElementById('feed-board-view').classList.add('hidden');
+  document.getElementById('feed-boards-list').classList.remove('hidden');
   loadFeed();
 }
 
@@ -373,8 +375,33 @@ function renderFeedBoards(boards) {
         toggleLike(board.id, likeBtn);
       });
     }
+    card.addEventListener('click', (e) => {
+      if (!e.target.closest('.like-btn')) openFeedBoard(board.id, 'feed');
+    });
     list.appendChild(card);
   });
+}
+
+async function openFeedBoard(boardId, fromTab = 'feed') {
+  try {
+    state.boardViewFrom = fromTab;
+    const data = await fetchPublic(`/api/feed/boards/${boardId}`);
+    document.getElementById('feed-main').classList.remove('hidden');
+    document.getElementById('liked-main').classList.add('hidden');
+    document.getElementById('feed-boards-list').classList.add('hidden');
+    document.getElementById('feed-empty').classList.add('hidden');
+    const view = document.getElementById('feed-board-view');
+    view.classList.remove('hidden');
+    document.getElementById('feed-board-title').textContent = data.board.name;
+    document.getElementById('feed-board-owner').textContent = `by ${data.board.owner_name}`;
+    const list = document.getElementById('feed-board-bookmarks');
+    list.innerHTML = '';
+    (data.bookmarks || []).forEach((b) => {
+      list.appendChild(renderBookmark(b, true));
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function toggleLike(boardId, btnEl) {
@@ -449,6 +476,9 @@ function renderLikedBoards() {
         toggleLike(board.id, likeBtn);
       });
     }
+    card.addEventListener('click', (e) => {
+      if (!e.target.closest('.like-btn')) openFeedBoard(board.id, 'liked');
+    });
     list.appendChild(card);
   });
 }
@@ -538,6 +568,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nav-liked').addEventListener('click', (e) => {
     e.preventDefault();
     showLikedTab();
+  });
+
+  document.getElementById('feed-back-btn').addEventListener('click', () => {
+    document.getElementById('feed-board-view').classList.add('hidden');
+    document.getElementById('feed-boards-list').classList.remove('hidden');
+    if (state.boardViewFrom === 'liked') {
+      showLikedTab();
+    }
   });
 
   document.getElementById('feed-search-input')?.addEventListener('input', () => {
