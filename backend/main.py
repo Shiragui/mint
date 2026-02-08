@@ -66,6 +66,18 @@ async def list_items(user_id: str | None = Depends(get_user_id)):
     return await items.list_items(user_id)
 
 
+@app.delete("/items/{item_id}")
+async def delete_item(
+    item_id: str,
+    user_id: str | None = Depends(get_user_id),
+):
+    if REQUIRE_AUTH and not user_id:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    if not await items.delete_item(item_id, user_id):
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"status": "deleted"}
+
+
 if __name__ == "__main__":
     import uvicorn
     from config import HOST, PORT

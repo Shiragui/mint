@@ -39,3 +39,11 @@ async def save_item(body: SaveItemRequest, user_id: str) -> dict:
 async def list_items(user_id: str) -> dict:
     _ensure_user(user_id)
     return {"items": _store[user_id]}
+
+
+async def delete_item(item_id: str, user_id: str) -> bool:
+    """Delete an item by id. Returns True if deleted."""
+    _ensure_user(user_id)
+    orig_len = len(_store[user_id])
+    _store[user_id] = [i for i in _store[user_id] if i["id"] != item_id]
+    return len(_store[user_id]) < orig_len

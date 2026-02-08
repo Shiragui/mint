@@ -651,9 +651,13 @@
       overlay.classList.add('loading');
       (async () => {
         try {
+          // Hide overlay before capture so selection lines/border aren't in the screenshot
+          overlay.style.visibility = 'hidden';
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
           const captureRes = await new Promise((resolve) => {
             chrome.runtime.sendMessage({ type: 'CAPTURE_TAB' }, resolve);
           });
+          overlay.style.visibility = '';
           if (!captureRes?.success || !captureRes.dataUrl) {
             throw new Error(captureRes?.error || 'Screenshot failed');
           }

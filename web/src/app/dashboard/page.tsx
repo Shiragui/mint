@@ -55,6 +55,26 @@ export default function DashboardPage() {
     router.push("/login");
   }
 
+  async function handleDelete(id: string) {
+    const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/items/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 404) {
+        setError("Item not found");
+        return;
+      }
+      if (!res.ok) throw new Error(res.statusText);
+      setError("");
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+    }
+  }
+
   if (loading) {
     return (
       <div className="container" style={{ paddingTop: 48 }}>
@@ -82,7 +102,38 @@ export default function DashboardPage() {
         </p>
       )}
       {items.map((item) => (
-        <div key={item.id} className="card">
+        <div key={item.id} className="card" style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(item.id);
+            }}
+            title="Delete"
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              fontSize: 20,
+              color: "#9ca3af",
+              lineHeight: 1,
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = "#b91c1c";
+              e.currentTarget.style.background = "#fef2f2";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = "#9ca3af";
+              e.currentTarget.style.background = "none";
+            }}
+            aria-label="Delete item"
+          >
+            ×
+          </button>
           <span style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase" }}>{item.type}</span>
           <h3>{item.title}</h3>
           {item.description && <p>{item.description}</p>}

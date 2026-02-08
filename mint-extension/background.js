@@ -210,14 +210,14 @@ function formatWebhookError(err) {
 async function callDedalusVision(apiKey, base64Image, mimeType) {
   const body = {
     model: DEDALUS_VISION_MODEL,
-    max_tokens: 300,
+    max_tokens: 50,
     messages: [
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: 'Identify and briefly describe what is in this image in one or two sentences. Be concise (object/scene and key details).'
+            text: 'In 3-6 words, name what this image shows. Examples: "red wireless headphones", "beach sunset", "blue leather handbag". Reply with ONLY the short label, nothing else.'
           },
           {
             type: 'image_url',
@@ -268,13 +268,13 @@ async function callGeminiVision(apiKey, base64Image, mimeType) {
             }
           },
           {
-            text: 'Identify and briefly describe what is in this image in one or two sentences. Be concise (object/scene and key details).'
+            text: 'In 3-6 words, name what this image shows. Examples: "red wireless headphones", "beach sunset", "blue leather handbag". Reply with ONLY the short label, nothing else.'
           }
         ]
       }
     ],
     generationConfig: {
-      maxOutputTokens: 300
+      maxOutputTokens: 50
     }
   };
 

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Lens Capture",
+  "name": "MINT",
   "version": "1.0.0",
   "description": "Select any area on a webpage, analyze it with Vision AI, and send the result to your backend.",
   "permissions": ["activeTab", "scripting", "storage"],
@@ -8,7 +8,7 @@
   "background": {"service_worker": "background.js"},
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Lens Capture",
+    "default_title": "MINT",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

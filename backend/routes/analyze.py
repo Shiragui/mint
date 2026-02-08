@@ -17,14 +17,14 @@ class AnalyzeRequest(BaseModel):
 async def call_dedalus_vision(api_key: str, base64_image: str, mime_type: str) -> str:
     body = {
         "model": DEDALUS_VISION_MODEL,
-        "max_tokens": 300,
+        "max_tokens": 50,
         "messages": [
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": "Identify and briefly describe what is in this image: objects, clothing, makeup, or locations. Be concise (one or two sentences) and mention anything that could be a purchasable product or a real place.",
+                        "text": "In 3-6 words, name what this image shows. Examples: 'red wireless headphones', 'beach sunset', 'blue leather handbag'. Reply with ONLY the short label, nothing else.",
                     },
                     {
                         "type": "image_url",

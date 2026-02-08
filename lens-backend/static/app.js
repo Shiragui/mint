@@ -86,6 +86,7 @@ function renderBookmark(b) {
 
   const count = Array.isArray(b.results) ? b.results.length : 0;
   card.innerHTML = `
+    <button class="bookmark-delete" title="Delete" aria-label="Delete bookmark" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;padding:4px;font-size:18px;color:#9ca3af;line-height:1;z-index:1">×</button>
     ${thumb}
     <div class="bookmark-info">
       <p class="bookmark-desc">${escapeHtml(b.description || 'No description')}</p>
@@ -95,6 +96,11 @@ function renderBookmark(b) {
       </p>
     </div>
   `;
+  card.style.position = 'relative';
+  card.querySelector('.bookmark-delete').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteBookmark(b.id);
+  });
   return card;
 }
 
@@ -102,6 +108,12 @@ function escapeHtml(s) {
   const div = document.createElement('div');
   div.textContent = s;
   return div.innerHTML;
+}
+
+async function deleteBookmark(id) {
+  await fetchApi(`/api/bookmarks/${id}`, { method: 'DELETE' });
+  closeModal();
+  loadBookmarks();
 }
 
 function renderDetail(b) {
@@ -125,7 +137,9 @@ function renderDetail(b) {
       <h3>Similar products</h3>
       ${results.length ? results : '<p style="color:#6b7280;font-size:14px">No results saved.</p>'}
     </div>
+    <button id="detail-delete-btn" class="btn-danger" style="margin-top:16px;padding:8px 16px;background:#b91c1c;color:white;border:none;border-radius:8px;cursor:pointer">Delete bookmark</button>
   `;
+  document.getElementById('detail-delete-btn').addEventListener('click', () => deleteBookmark(b.id));
 }
 
 async function loadBookmarks() {
