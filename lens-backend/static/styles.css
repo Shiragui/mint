@@ -553,8 +553,9 @@ body {
   color: var(--text-muted);
 }
 
-/* Feed */
-.feed-main {
+/* Feed & Liked */
+.feed-main,
+.liked-main {
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
@@ -619,6 +620,39 @@ body {
 
 .feed-board-card-owner {
   margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.feed-board-card-likes {
+  margin-top: 12px;
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--mint-border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.like-btn:hover {
+  border-color: var(--mint);
+  background: var(--mint-pale);
+}
+
+.like-btn.liked {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+.like-count-static {
   font-size: 13px;
   color: var(--text-muted);
 }

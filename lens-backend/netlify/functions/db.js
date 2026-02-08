@@ -47,6 +47,13 @@ async function ensureTables() {
       metadata JSONB DEFAULT '{}',
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`
+    await sql`CREATE TABLE IF NOT EXISTS board_likes (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, board_id)
+    )`
+    await sql`CREATE INDEX IF NOT EXISTS idx_board_likes_board ON board_likes(board_id)`
   })().catch((err) => { initPromise = null; throw err })
   return initPromise
 }
@@ -209,16 +216,82 @@ export async function deleteBoard(boardId, userId) {
 }
 
 /**
- * Public feed: all boards from all users with owner username and first bookmark image.
+ * Public feed: all boards from all users with owner username, first bookmark image, like count.
+ * If userId provided, includes is_liked for each board.
  */
-export async function getPublicBoards() {
+export async function getPublicBoards(userId = null) {
   await ensureTables()
   const rows = await sql`
     SELECT b.id, b.name, b.created_at, u.username as owner_name,
-      (SELECT image_base64 FROM bookmarks WHERE board_id = b.id ORDER BY created_at DESC LIMIT 1) as preview_image
+      (SELECT image_base64 FROM bookmarks WHERE board_id = b.id ORDER BY created_at DESC LIMIT 1) as preview_image,
+      (SELECT COUNT(*)::int FROM board_likes WHERE board_id = b.id) as like_count
     FROM boards b
     JOIN users u ON b.user_id = u.id
     ORDER BY b.created_at DESC
+  `
+  let result = rows.map(r => ({
+    id: String(r.id),
+    name: r.name,
+    owner_name: r.owner_name,
+    created_at: r.created_at,
+    preview_image: r.preview_image || null,
+    like_count: r.like_count || 0,
+  }))
+
+  if (userId) {
+    const liked = await sql`
+      SELECT board_id FROM board_likes WHERE user_id = ${userId}
+    `
+    const likedSet = new Set(liked.map(r => String(r.board_id)))
+    result = result.map(b => ({ ...b, is_liked: likedSet.has(b.id) }))
+  }
+  return result
+}
+
+/**
+ * Like a board (user must be authenticated).
+ */
+export async function likeBoard(userId, boardId) {
+  await ensureTables()
+  const [board] = await sql`SELECT id FROM boards WHERE id = ${boardId}`
+  if (!board) return false
+  try {
+    await sql`
+      INSERT INTO board_likes (user_id, board_id) VALUES (${userId}, ${boardId})
+      ON CONFLICT (user_id, board_id) DO NOTHING
+    `
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Unlike a board.
+ */
+export async function unlikeBoard(userId, boardId) {
+  await ensureTables()
+  const result = await sql`
+    DELETE FROM board_likes WHERE user_id = ${userId} AND board_id = ${boardId}
+    RETURNING 1
+  `
+  return result.length > 0
+}
+
+/**
+ * Get boards liked by the current user (for Liked tab).
+ */
+export async function getLikedBoards(userId) {
+  await ensureTables()
+  const rows = await sql`
+    SELECT b.id, b.name, b.created_at, u.username as owner_name,
+      (SELECT image_base64 FROM bookmarks WHERE board_id = b.id ORDER BY created_at DESC LIMIT 1) as preview_image,
+      (SELECT COUNT(*)::int FROM board_likes WHERE board_id = b.id) as like_count
+    FROM board_likes bl
+    JOIN boards b ON b.id = bl.board_id
+    JOIN users u ON b.user_id = u.id
+    WHERE bl.user_id = ${userId}
+    ORDER BY bl.created_at DESC
   `
   return rows.map(r => ({
     id: String(r.id),
@@ -226,6 +299,8 @@ export async function getPublicBoards() {
     owner_name: r.owner_name,
     created_at: r.created_at,
     preview_image: r.preview_image || null,
+    like_count: r.like_count || 0,
+    is_liked: true,
   }))
 }
 

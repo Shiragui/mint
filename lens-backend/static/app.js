@@ -84,7 +84,7 @@ async function register(username, password) {
   setToken(data.access_token);
 }
 
-let state = { boards: [], bookmarks: [], selectedBoardId: null, currentTab: 'profile', feedBoards: [] };
+let state = { boards: [], bookmarks: [], selectedBoardId: null, currentTab: 'profile', feedBoards: [], likedBoards: [] };
 
 function escapeHtml(s) {
   const div = document.createElement('div');
@@ -96,19 +96,32 @@ function showProfileTab() {
   state.currentTab = 'profile';
   document.getElementById('profile-main').classList.remove('hidden');
   document.getElementById('feed-main').classList.add('hidden');
+  document.getElementById('liked-main').classList.add('hidden');
   document.getElementById('nav-profile').classList.add('active');
   document.getElementById('nav-feed').classList.remove('active');
+  document.getElementById('nav-liked').classList.remove('active');
 }
 
 function showFeedTab() {
   state.currentTab = 'feed';
   document.getElementById('profile-main').classList.add('hidden');
   document.getElementById('feed-main').classList.remove('hidden');
+  document.getElementById('liked-main').classList.add('hidden');
   document.getElementById('nav-profile').classList.remove('active');
   document.getElementById('nav-feed').classList.add('active');
-  document.getElementById('feed-board-view').classList.add('hidden');
-  document.getElementById('feed-boards-list').classList.remove('hidden');
+  document.getElementById('nav-liked').classList.remove('active');
   loadFeed();
+}
+
+function showLikedTab() {
+  state.currentTab = 'liked';
+  document.getElementById('profile-main').classList.add('hidden');
+  document.getElementById('feed-main').classList.add('hidden');
+  document.getElementById('liked-main').classList.remove('hidden');
+  document.getElementById('nav-profile').classList.remove('active');
+  document.getElementById('nav-feed').classList.remove('active');
+  document.getElementById('nav-liked').classList.add('active');
+  loadLikedBoards();
 }
 
 function renderBoards() {
@@ -303,7 +316,9 @@ async function loadAll() {
 
 async function loadFeed() {
   try {
-    const data = await fetchPublic('/api/feed/boards');
+    const data = getToken()
+      ? await fetchApi('/api/feed/boards')
+      : await fetchPublic('/api/feed/boards');
     state.feedBoards = data.boards || [];
     renderFeedBoards(state.feedBoards);
   } catch (err) {
@@ -333,35 +348,109 @@ function renderFeedBoards(boards) {
     const thumb = board.preview_image
       ? `<img class="feed-board-card-thumb" src="data:image/png;base64,${board.preview_image}" alt="">`
       : '<div class="feed-board-card-placeholder">🛒</div>';
+    const likeCount = board.like_count ?? 0;
+    const isLiked = board.is_liked ?? false;
+    const canLike = !!getToken();
+    const likesHtml = canLike
+      ? `<div class="feed-board-card-likes">
+          <button type="button" class="like-btn ${isLiked ? 'liked' : ''}" data-board-id="${escapeHtml(board.id)}" title="${isLiked ? 'Unlike' : 'Like'}">
+            ${isLiked ? '❤️' : '🤍'} <span class="like-count">${likeCount}</span>
+          </button>
+        </div>`
+      : `<div class="feed-board-card-likes"><span class="like-count-static">❤️ ${likeCount}</span></div>`;
     card.innerHTML = `
       <div class="feed-board-card-image">${thumb}</div>
       <div class="feed-board-card-info">
         <h3 class="feed-board-card-title">${escapeHtml(board.name)}</h3>
         <p class="feed-board-card-owner">by ${escapeHtml(board.owner_name)}</p>
+        ${likesHtml}
       </div>
     `;
-    card.addEventListener('click', () => openFeedBoard(board.id));
+    const likeBtn = card.querySelector('.like-btn');
+    if (likeBtn) {
+      likeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLike(board.id, likeBtn);
+      });
+    }
     list.appendChild(card);
   });
 }
 
-async function openFeedBoard(boardId) {
+async function toggleLike(boardId, btnEl) {
+  if (!getToken()) return;
+  const isLiked = btnEl.classList.contains('liked');
+  const currentCount = parseInt(btnEl.querySelector('.like-count')?.textContent || '0', 10) || 0;
   try {
-    const data = await fetchPublic(`/api/feed/boards/${boardId}`);
-    document.getElementById('feed-boards-list').classList.add('hidden');
-    document.getElementById('feed-empty').classList.add('hidden');
-    const view = document.getElementById('feed-board-view');
-    view.classList.remove('hidden');
-    document.getElementById('feed-board-title').textContent = data.board.name;
-    document.getElementById('feed-board-owner').textContent = `by ${data.board.owner_name}`;
-    const list = document.getElementById('feed-board-bookmarks');
-    list.innerHTML = '';
-    (data.bookmarks || []).forEach((b) => {
-      list.appendChild(renderBookmark(b, true));
-    });
+    if (isLiked) {
+      await fetchApi(`/api/feed/boards/${boardId}/like`, { method: 'DELETE' });
+      btnEl.classList.remove('liked');
+      btnEl.innerHTML = `🤍 <span class="like-count">${Math.max(0, currentCount - 1)}</span>`;
+    } else {
+      await fetchApi(`/api/feed/boards/${boardId}/like`, { method: 'POST' });
+      btnEl.classList.add('liked');
+      btnEl.innerHTML = `❤️ <span class="like-count">${currentCount + 1}</span>`;
+    }
+    const board = state.feedBoards.find((b) => b.id === boardId);
+    if (board) {
+      board.is_liked = !isLiked;
+      board.like_count = isLiked ? currentCount - 1 : currentCount + 1;
+    }
+    if (state.currentTab === 'liked') loadLikedBoards();
   } catch (err) {
     console.error(err);
   }
+}
+
+async function loadLikedBoards() {
+  if (!getToken()) return;
+  try {
+    const data = await fetchApi('/api/feed/boards/liked');
+    state.likedBoards = data.boards || [];
+    renderLikedBoards();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function renderLikedBoards() {
+  const list = document.getElementById('liked-boards-list');
+  const empty = document.getElementById('liked-empty');
+  if (!list || !empty) return;
+  list.innerHTML = '';
+  if (state.likedBoards.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  state.likedBoards.forEach((board) => {
+    const card = document.createElement('div');
+    card.className = 'feed-board-card';
+    const thumb = board.preview_image
+      ? `<img class="feed-board-card-thumb" src="data:image/png;base64,${board.preview_image}" alt="">`
+      : '<div class="feed-board-card-placeholder">🛒</div>';
+    const likeCount = board.like_count ?? 0;
+    card.innerHTML = `
+      <div class="feed-board-card-image">${thumb}</div>
+      <div class="feed-board-card-info">
+        <h3 class="feed-board-card-title">${escapeHtml(board.name)}</h3>
+        <p class="feed-board-card-owner">by ${escapeHtml(board.owner_name)}</p>
+        <div class="feed-board-card-likes">
+          <button type="button" class="like-btn liked" data-board-id="${escapeHtml(board.id)}" title="Unlike">
+            ❤️ <span class="like-count">${likeCount}</span>
+          </button>
+        </div>
+      </div>
+    `;
+    const likeBtn = card.querySelector('.like-btn');
+    if (likeBtn) {
+      likeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLike(board.id, likeBtn);
+      });
+    }
+    list.appendChild(card);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -446,9 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
     showFeedTab();
   });
 
-  document.getElementById('feed-back-btn').addEventListener('click', () => {
-    document.getElementById('feed-board-view').classList.add('hidden');
-    document.getElementById('feed-boards-list').classList.remove('hidden');
+  document.getElementById('nav-liked').addEventListener('click', (e) => {
+    e.preventDefault();
+    showLikedTab();
   });
 
   document.getElementById('feed-search-input')?.addEventListener('input', () => {

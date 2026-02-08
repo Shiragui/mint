@@ -17,6 +17,9 @@ import {
   updateBookmarkBoard,
   getPublicBoards,
   getBoardBookmarksPublic,
+  getLikedBoards,
+  likeBoard,
+  unlikeBoard,
   insertLensVault,
 } from './db.js'
 import { hashPassword, verifyPassword, createAccessToken, decodeToken } from './auth.js'
@@ -220,11 +223,56 @@ app.delete('/api/bookmarks/:bookmarkId', requireToken, async (req, res) => {
   }
 })
 
-// --- Public Feed (no auth required) ---
+// --- Public Feed (no auth required for list; optional auth for is_liked) ---
 app.get('/api/feed/boards', async (req, res) => {
   try {
-    const boards = await getPublicBoards()
+    let userId = null
+    const auth = req.headers.authorization
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
+    if (token) {
+      const payload = decodeToken(token, SECRET_KEY)
+      if (payload?.sub) {
+        const user = await getUserByUsername(payload.sub)
+        if (user) userId = user.id
+      }
+    }
+    const boards = await getPublicBoards(userId)
     return res.json({ boards })
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+// Liked boards (auth required) - must be before :boardId route
+app.get('/api/feed/boards/liked', requireToken, async (req, res) => {
+  try {
+    const user = await getUserByUsername(req.auth.sub)
+    if (!user) return res.status(401).json({ detail: 'User not found' })
+    const boards = await getLikedBoards(user.id)
+    return res.json({ boards })
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+app.post('/api/feed/boards/:boardId/like', requireToken, async (req, res) => {
+  try {
+    const user = await getUserByUsername(req.auth.sub)
+    if (!user) return res.status(401).json({ detail: 'User not found' })
+    const ok = await likeBoard(user.id, req.params.boardId)
+    if (!ok) return res.status(404).json({ detail: 'Board not found' })
+    return res.json({ status: 'liked' })
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+app.delete('/api/feed/boards/:boardId/like', requireToken, async (req, res) => {
+  try {
+    const user = await getUserByUsername(req.auth.sub)
+    if (!user) return res.status(401).json({ detail: 'User not found' })
+    await unlikeBoard(user.id, req.params.boardId)
+    return res.json({ status: 'unliked' })
   } catch (err) {
     return res.status(500).json({ detail: err.message })
   }
