@@ -1,0 +1,16 @@
+# Copy to .env and fill in your values
+# For Netlify: set these in Site settings → Environment variables
+# Connect Neon: run `netlify db init` or add NETLIFY_DATABASE_URL manually
+
+# Database (set by Netlify when Neon is connected)
+# NETLIFY_DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+
+# API Key - optional; if set, extension must send X-API-Key header. Leave empty to skip.
+# LENS_API_KEY=
+
+# JWT secret for login tokens
+LENS_SECRET_KEY=your-jwt-secret
+
+# Login credentials (demo: admin/admin)
+LENS_ADMIN_USER=admin
+LENS_ADMIN_PASSWORD=admin
