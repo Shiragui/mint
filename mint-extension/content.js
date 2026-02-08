@@ -229,21 +229,29 @@
         position: fixed;
         bottom: 24px;
         right: 24px;
-        width: 48px;
-        height: 48px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
-        background: #34d399 !important;
-        box-shadow: 0 4px 16px rgba(52, 211, 153, 0.4) !important;
+        background: transparent !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
         cursor: pointer;
         z-index: 2147483646;
         display: none;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
-        color: #047857 !important;
         user-select: none;
-        border: 2px solid #10b981 !important;
+        border: none !important;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
+        padding: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      #lens-video-bubble img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none;
+        border-radius: 50%;
       }
       #lens-video-bubble.visible { display: flex; animation: lens-bubble-in 0.3s ease; }
       @keyframes lens-bubble-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
@@ -828,7 +836,13 @@
     bubble.id = BUBBLE_ID;
     bubble.setAttribute('aria-label', 'Find similar products');
     bubble.title = 'Click to select product to search';
-    bubble.innerHTML = '🔍';
+    const iconImg = document.createElement('img');
+    iconImg.src = chrome.runtime.getURL('icons/minn.png');
+    iconImg.style.width = '100%';
+    iconImg.style.height = '100%';
+    iconImg.style.objectFit = 'contain';
+    iconImg.style.pointerEvents = 'none';
+    bubble.appendChild(iconImg);
     bubble.style.display = 'none';
 
     let dragStart = null;
