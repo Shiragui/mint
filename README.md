@@ -1,4 +1,4 @@
-# devfest2026 — Lens Capture
+# MINT
 
 Entertainment media scanner: select a region on any page (e.g. YouTube, shows), get a vision description and similar products, **save items** to your list, and review them on the website.
 
@@ -10,37 +10,14 @@ Entertainment media scanner: select a region on any page (e.g. YouTube, shows), 
 
 ## Quick start
 
-### 1. Backend
+Go to mintgreen.netlify.app to create an account and view other people's posted boards.
 
-```bash
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
-# Set DEDALUS_API_KEY in .env. For local dev without auth set REQUIRE_AUTH=0.
-uvicorn main:app --reload
-```
+In Chrome go to `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, select the `mint-extension` folder.
 
-Runs at http://localhost:8000. Docs: http://localhost:8000/docs.
+Click the  extension to log into your account to start saving. Uses the icon on the bottom right of the screen to access the selection feature to choose the object you'd like to analyze.
 
-### 2. Extension
+For the extension to work, input API keys into `config.js` in `mint-extension`.
 
-1. In Chrome go to `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, select the `mint-extension` folder.
-2. Open the extension **Options**.
-3. Set **Backend URL** to `http://localhost:8000` and **Auth token** to any string (e.g. `dev-token`). Save.
-4. (Optional) If you leave Backend URL empty, the extension uses your Dedalus or Gemini API key directly and won’t have “Save” to the backend.)
-
-Use the extension: click the icon → **Capture area** → draw a rectangle on the page. You’ll get a description and similar products; click **Save** on a product to add it to your list.
-
-### 3. Website
-
-```bash
-cd web
-npm install
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
-npm run dev
-```
-
-Open http://localhost:3000 → **Log in** with the same token you set in the extension → **Dashboard** to see saved items.
 
 ## Project plan
 
