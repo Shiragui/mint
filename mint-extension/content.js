@@ -56,6 +56,50 @@
       #${OVERLAY_ID}.loading .lens-loading-msg {
         display: block;
       }
+      #${OVERLAY_ID} .lens-confirm-bar {
+        position: absolute;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 12px;
+        padding: 12px 20px;
+        background: rgba(0,0,0,0.85);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10;
+        pointer-events: auto;
+      }
+      #${OVERLAY_ID} .lens-confirm-bar button {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: system-ui, sans-serif;
+      }
+      #${OVERLAY_ID} .lens-confirm-bar .lens-btn-search {
+        background: #34d399;
+        color: #047857;
+      }
+      #${OVERLAY_ID} .lens-confirm-bar .lens-btn-search:hover { background: #6ee7b7; }
+      #${OVERLAY_ID} .lens-confirm-bar .lens-btn-cancel {
+        background: #6b7280;
+        color: #fff;
+      }
+      #${OVERLAY_ID} .lens-confirm-bar .lens-btn-cancel:hover { background: #4b5563; }
+      #${OVERLAY_ID} .lens-resize-handle {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: #34d399;
+        border: 2px solid #fff;
+        border-radius: 2px;
+        cursor: pointer;
+        z-index: 10;
+        pointer-events: auto;
+      }
       #lens-capture-toast {
         position: fixed;
         bottom: 24px;
@@ -79,10 +123,10 @@
       #lens-results-popup {
         position: fixed;
         top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        right: 24px;
+        transform: translateY(-50%);
         z-index: 2147483649;
-        width: min(420px, calc(100vw - 32px));
+        width: min(420px, calc(100vw - 48px));
         max-height: 85vh;
         background: #ffffff !important;
         border-radius: 16px;
@@ -94,7 +138,7 @@
         animation: lens-popup-in 0.2s ease;
       }
       #lens-results-popup.dragging { cursor: move; }
-      @keyframes lens-popup-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+      @keyframes lens-popup-in { from { opacity: 0; transform: translateY(-50%) scale(0.96); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
       #lens-results-popup .lens-results-backdrop {
         position: fixed;
         inset: 0;
@@ -162,6 +206,42 @@
       #lens-results-popup .lens-product-links a.lens-link-amazon { background: #232f3e; }
       #lens-results-popup .lens-product-links a.lens-link-google { background: #4285f4; }
       #lens-results-popup .lens-no-products { font-size: 13px; color: #6b7280; padding: 8px 0; }
+      #lens-results-popup .lens-results-toolbar { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      #lens-results-popup .lens-save-bookmark {
+        padding: 6px 12px; border-radius: 8px; border: 1px solid #a7f3d0;
+        background: #34d399; color: #047857; font-size: 12px; font-weight: 600;
+        cursor: pointer;
+      }
+      #lens-results-popup .lens-save-bookmark:hover:not(:disabled) { background: #6ee7b7; }
+      #lens-results-popup .lens-save-bookmark:disabled { opacity: 0.7; cursor: default; }
+      #lens-results-popup .lens-sort-select {
+        padding: 6px 10px; border-radius: 8px; border: 1px solid #a7f3d0;
+        background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 500;
+        cursor: pointer;
+      }
+      #lens-video-bubble {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #34d399 !important;
+        box-shadow: 0 4px 16px rgba(52, 211, 153, 0.4) !important;
+        cursor: pointer;
+        z-index: 2147483646;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        color: #047857 !important;
+        user-select: none;
+        border: 2px solid #10b981 !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      #lens-video-bubble.visible { display: flex; animation: lens-bubble-in 0.3s ease; }
+      @keyframes lens-bubble-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+      #lens-video-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(52, 211, 153, 0.5) !important; }
     `;
   }
 
@@ -189,7 +269,11 @@
     return div.innerHTML;
   }
 
-  function showResultsPopup(description, similarProducts, webhookError) {
+  function showResultsPopup(description, similarProducts, webhookError, opts) {
+    opts = opts || {};
+    const croppedBase64 = opts.croppedBase64 || '';
+    const bookmarkApiUrl = opts.bookmarkApiUrl || '';
+    const bookmarkToken = opts.bookmarkToken || '';
     injectStyles();
     const id = 'lens-results-popup';
     let popup = document.getElementById(id);
@@ -251,9 +335,42 @@
 
     const body = document.createElement('div');
     body.className = 'lens-results-body';
-    body.innerHTML = '<div class="lens-results-section">Products that look like your selection</div><div class="lens-results-list"></div>';
+    body.innerHTML = '<div class="lens-results-section">Products that look like your selection</div><div class="lens-results-toolbar"></div><div class="lens-results-list"></div>';
     const listEl = body.querySelector('.lens-results-list');
     const sectionEl = body.querySelector('.lens-results-section');
+    const toolbarEl = body.querySelector('.lens-results-toolbar');
+    if (bookmarkApiUrl && bookmarkToken) {
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'lens-save-bookmark';
+      saveBtn.textContent = 'Save Bookmark';
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+        try {
+          const res = await fetch((bookmarkApiUrl.replace(/\/$/, '')) + '/api/bookmarks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + bookmarkToken
+            },
+            body: JSON.stringify({
+              image: croppedBase64,
+              description,
+              similarProducts: products,
+              sourceUrl: window.location.href
+            })
+          });
+          if (!res.ok) throw new Error(await res.text());
+          saveBtn.textContent = 'Saved!';
+          showToast('Bookmark saved', 'success');
+        } catch (e) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Bookmark';
+          showToast(e.message || 'Failed to save', 'error');
+        }
+      });
+      toolbarEl.appendChild(saveBtn);
+    }
     if (webhookError) {
       const warn = document.createElement('p');
       warn.className = 'lens-no-products';
@@ -261,8 +378,30 @@
       warn.textContent = 'Backend: ' + webhookError;
       body.insertBefore(warn, sectionEl);
     }
-    if (Array.isArray(similarProducts) && similarProducts.length > 0) {
-      similarProducts.forEach((p) => {
+    const products = Array.isArray(similarProducts) ? similarProducts : [];
+    function parsePriceNum(p) {
+      if (p.priceNum != null && typeof p.priceNum === 'number') return p.priceNum;
+      const s = (p.price || '').toString().replace(/[^0-9.]/g, '');
+      const n = parseFloat(s);
+      return isNaN(n) ? Infinity : n;
+    }
+    function sortWithNoPriceLast(arr, asc) {
+      const withPrice = arr.filter((p) => parsePriceNum(p) !== Infinity);
+      const noPrice = arr.filter((p) => parsePriceNum(p) === Infinity);
+      withPrice.sort((a, b) => (asc ? parsePriceNum(a) - parsePriceNum(b) : parsePriceNum(b) - parsePriceNum(a)));
+      noPrice.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      return [...withPrice, ...noPrice];
+    }
+    function renderProducts(sorted) {
+      listEl.innerHTML = '';
+      if (sorted.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'lens-no-products';
+        empty.textContent = 'No similar products found.';
+        listEl.appendChild(empty);
+        return;
+      }
+      sorted.forEach((p) => {
         const isRealProduct = p.link && !p.fallback;
         const card = document.createElement(isRealProduct ? 'a' : 'div');
         card.className = 'lens-product-card';
@@ -299,9 +438,9 @@
         const meta = document.createElement('div');
         meta.className = 'lens-product-meta';
         const parts = [];
-        if (p.price) parts.push(`<span class="lens-product-price">${escapeHtml(p.price)}</span>`);
+        parts.push(`<span class="lens-product-price">${escapeHtml(p.price || 'Price N/A')}</span>`);
         if (p.source) parts.push(`<span class="lens-product-source"> · ${escapeHtml(p.source)}</span>`);
-        meta.innerHTML = parts.join('') || '';
+        meta.innerHTML = parts.join('');
 
         info.append(name, meta);
         card.append(imgWrap, info);
@@ -330,12 +469,22 @@
 
         listEl.appendChild(card);
       });
-    } else {
-      const empty = document.createElement('p');
-      empty.className = 'lens-no-products';
-      empty.textContent = 'No similar products found.';
-      listEl.appendChild(empty);
     }
+    if (products.length > 0) {
+      const sortSelect = document.createElement('select');
+      sortSelect.className = 'lens-sort-select';
+      sortSelect.innerHTML = '<option value="default">Default order</option><option value="price-asc">Price: Low to High</option><option value="price-desc">Price: High to Low</option>';
+      sortSelect.addEventListener('change', () => {
+        const v = sortSelect.value;
+        let sorted = [...products];
+        if (v === 'price-asc') sorted = sortWithNoPriceLast(sorted, true);
+        else if (v === 'price-desc') sorted = sortWithNoPriceLast(sorted, false);
+        else sorted = sortWithNoPriceLast(sorted, true);
+        renderProducts(sorted);
+      });
+      toolbarEl.appendChild(sortSelect);
+    }
+    renderProducts(sortWithNoPriceLast([...products], true));
 
     popup.append(backdrop, header, body);
     document.body.appendChild(popup);
@@ -408,41 +557,57 @@
     const ctx = canvas.getContext('2d');
     let rect = { x: 0, y: 0, w: 0, h: 0 };
     let start = null;
+    let editMode = false;
+    let dragMode = null;
+    let confirmBar = null;
+    let handles = [];
 
     function setRect(from, to) {
       rect = {
         x: Math.min(from.x, to.x),
         y: Math.min(from.y, to.y),
-        w: Math.abs(to.x - from.x),
-        h: Math.abs(to.y - from.y)
+        w: Math.max(20, Math.abs(to.x - from.x)),
+        h: Math.max(20, Math.abs(to.y - from.y))
       };
     }
 
-    function onMouseDown(e) {
-      if (overlay.classList.contains('loading')) return;
-      start = { x: e.clientX, y: e.clientY };
-      rect = { x: e.clientX, y: e.clientY, w: 0, h: 0 };
-      drawSelection(ctx, rect);
+    function updateHandles() {
+      handles.forEach((h) => {
+        if (h.id === 'nw') { h.style.left = rect.x - 6 + 'px'; h.style.top = rect.y - 6 + 'px'; }
+        if (h.id === 'ne') { h.style.left = rect.x + rect.w - 6 + 'px'; h.style.top = rect.y - 6 + 'px'; }
+        if (h.id === 'sw') { h.style.left = rect.x - 6 + 'px'; h.style.top = rect.y + rect.h - 6 + 'px'; }
+        if (h.id === 'se') { h.style.left = rect.x + rect.w - 6 + 'px'; h.style.top = rect.y + rect.h - 6 + 'px'; }
+      });
     }
 
-    function onMouseMove(e) {
-      if (!start) return;
-      setRect(start, { x: e.clientX, y: e.clientY });
-      drawSelection(ctx, rect);
+    function enterEditMode() {
+      editMode = true;
+      confirmBar = document.createElement('div');
+      confirmBar.className = 'lens-confirm-bar';
+      const btnSearch = document.createElement('button');
+      btnSearch.className = 'lens-btn-search';
+      btnSearch.textContent = 'Search';
+      const btnCancel = document.createElement('button');
+      btnCancel.className = 'lens-btn-cancel';
+      btnCancel.textContent = 'Cancel';
+      btnSearch.addEventListener('click', () => runSearch());
+      btnCancel.addEventListener('click', removeOverlay);
+      confirmBar.append(btnSearch, btnCancel);
+      overlay.appendChild(confirmBar);
+
+      ['nw', 'ne', 'sw', 'se'].forEach((id) => {
+        const h = document.createElement('div');
+        h.className = 'lens-resize-handle';
+        h.id = id;
+        h.dataset.corner = id;
+        handles.push(h);
+        overlay.appendChild(h);
+      });
+      updateHandles();
     }
 
-    function onMouseUp(e) {
-      if (!start) return;
-      setRect(start, { x: e.clientX, y: e.clientY });
-      if (rect.w < 5 || rect.h < 5) {
-        start = null;
-        drawSelection(ctx, null);
-        return;
-      }
-      start = null;
+    function runSearch() {
       overlay.classList.add('loading');
-      drawSelection(ctx, rect);
-
       (async () => {
         try {
           const captureRes = await new Promise((resolve) => {
@@ -468,7 +633,12 @@
           showResultsPopup(
             analyzeRes.description,
             analyzeRes.similarProducts || [],
-            analyzeRes.webhookError || null
+            analyzeRes.webhookError || null,
+            {
+              croppedBase64: analyzeRes.croppedBase64,
+              bookmarkApiUrl: analyzeRes.bookmarkApiUrl,
+              bookmarkToken: analyzeRes.bookmarkToken
+            }
           );
           let msg = analyzeRes.sentToWebhook
             ? 'Analyzed and sent to your backend.'
@@ -487,6 +657,96 @@
       })();
     }
 
+    function onEditMouseDown(e) {
+      if (overlay.classList.contains('loading')) return;
+      if (e.target.tagName === 'BUTTON' || e.target.closest('.lens-confirm-bar')) return;
+      const corner = e.target.dataset?.corner;
+      const inBox = e.clientX >= rect.x && e.clientX <= rect.x + rect.w &&
+        e.clientY >= rect.y && e.clientY <= rect.y + rect.h &&
+        !corner;
+      if (corner) {
+        dragMode = { type: 'resize', corner };
+      } else if (inBox) {
+        dragMode = { type: 'move', startX: e.clientX - rect.x, startY: e.clientY - rect.y };
+      }
+    }
+
+    function onEditMouseMove(e) {
+      if (!dragMode) return;
+      if (dragMode.type === 'move') {
+        rect.x = Math.max(0, Math.min(window.innerWidth - rect.w, e.clientX - dragMode.startX));
+        rect.y = Math.max(0, Math.min(window.innerHeight - rect.h, e.clientY - dragMode.startY));
+      } else {
+        const { corner } = dragMode;
+        const mx = e.clientX, my = e.clientY;
+        if (corner === 'nw') {
+          rect.w = rect.x + rect.w - mx;
+          rect.h = rect.y + rect.h - my;
+          rect.x = mx;
+          rect.y = my;
+        } else if (corner === 'ne') {
+          rect.w = mx - rect.x;
+          rect.h = rect.y + rect.h - my;
+          rect.y = my;
+        } else if (corner === 'sw') {
+          rect.w = rect.x + rect.w - mx;
+          rect.h = my - rect.y;
+          rect.x = mx;
+        } else if (corner === 'se') {
+          rect.w = mx - rect.x;
+          rect.h = my - rect.y;
+        }
+        if (rect.w < 20) rect.w = 20;
+        if (rect.h < 20) rect.h = 20;
+        if (rect.x < 0) { rect.w += rect.x; rect.x = 0; }
+        if (rect.y < 0) { rect.h += rect.y; rect.y = 0; }
+      }
+      drawSelection(ctx, rect);
+      updateHandles();
+    }
+
+    function onEditMouseUp() {
+      dragMode = null;
+    }
+
+    function onMouseDown(e) {
+      if (overlay.classList.contains('loading')) return;
+      if (editMode) {
+        onEditMouseDown(e);
+        return;
+      }
+      start = { x: e.clientX, y: e.clientY };
+      rect = { x: e.clientX, y: e.clientY, w: 0, h: 0 };
+      drawSelection(ctx, rect);
+    }
+
+    function onMouseMove(e) {
+      if (editMode) {
+        onEditMouseMove(e);
+        return;
+      }
+      if (!start) return;
+      setRect(start, { x: e.clientX, y: e.clientY });
+      drawSelection(ctx, rect);
+    }
+
+    function onMouseUp(e) {
+      if (editMode) {
+        onEditMouseUp(e);
+        return;
+      }
+      if (!start) return;
+      setRect(start, { x: e.clientX, y: e.clientY });
+      if (rect.w < 5 || rect.h < 5) {
+        start = null;
+        drawSelection(ctx, null);
+        return;
+      }
+      start = null;
+      enterEditMode();
+      drawSelection(ctx, rect);
+    }
+
     function onKeyDown(e) {
       if (e.key === 'Escape') removeOverlay();
     }
@@ -496,14 +756,126 @@
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('keydown', onKeyDown);
+      if (confirmBar) confirmBar.remove();
+      handles.forEach((h) => h.remove());
       const el = document.getElementById(OVERLAY_ID);
       if (el) el.remove();
+      const b = document.getElementById('lens-video-bubble');
+      if (b) {
+        b.classList.add('visible');
+        b.style.display = 'flex';
+      }
     }
 
     overlay.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('keydown', onKeyDown);
+  }
+
+  function createVideoBubble() {
+    const BUBBLE_ID = 'lens-video-bubble';
+    let bubble = document.getElementById(BUBBLE_ID);
+    if (bubble) return bubble;
+
+    injectStyles();
+    bubble = document.createElement('div');
+    bubble.id = BUBBLE_ID;
+    bubble.setAttribute('aria-label', 'Find similar products');
+    bubble.title = 'Click to select product to search';
+    bubble.innerHTML = '🔍';
+    bubble.style.display = 'none';
+
+    let dragStart = null;
+    let didDrag = false;
+
+    bubble.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      didDrag = false;
+      const rect = bubble.getBoundingClientRect();
+      bubble.style.left = rect.left + 'px';
+      bubble.style.top = rect.top + 'px';
+      bubble.style.right = 'auto';
+      bubble.style.bottom = 'auto';
+      dragStart = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top };
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragStart) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+      bubble.style.left = (dragStart.left + dx) + 'px';
+      bubble.style.top = (dragStart.top + dy) + 'px';
+    });
+
+    window.addEventListener('mouseup', () => { dragStart = null; });
+
+    bubble.addEventListener('click', (e) => {
+      if (didDrag) return;
+      e.preventDefault();
+      e.stopPropagation();
+      bubble.classList.remove('visible');
+      bubble.style.display = 'none';
+      runSnipping();
+    });
+
+    document.body.appendChild(bubble);
+    return bubble;
+  }
+
+  function showVideoBubble() {
+    const bubble = createVideoBubble();
+    bubble.style.display = 'flex';
+    bubble.classList.add('visible');
+  }
+
+  function isVideoSite() {
+    const host = window.location.hostname.toLowerCase();
+    return /youtube\.com|youtu\.be|vimeo\.com|twitch\.tv|dailymotion\.com|bilibili\.com|facebook\.com\/watch|instagram\.com/i.test(host);
+  }
+
+  function findVideosIncludingShadow(root, found) {
+    try {
+      root.querySelectorAll('video').forEach((v) => found.push(v));
+      root.querySelectorAll('*').forEach((node) => {
+        if (node.shadowRoot) findVideosIncludingShadow(node.shadowRoot, found);
+      });
+    } catch (_) {}
+  }
+
+  function observeVideoPlay() {
+    const found = [];
+    findVideosIncludingShadow(document.documentElement, found);
+    found.forEach((video) => {
+      if (video._lensPlayListener) return;
+      video._lensPlayListener = true;
+      video.addEventListener('play', () => showVideoBubble());
+    });
+    found.forEach((v) => { if (!v.paused) showVideoBubble(); });
+  }
+
+  function initVideoBubble() {
+    injectStyles();
+    observeVideoPlay();
+    if (isVideoSite()) {
+      setTimeout(showVideoBubble, 1500);
+    }
+    const mo = new MutationObserver(() => observeVideoPlay());
+    if (document.body) {
+      mo.observe(document.body, { childList: true, subtree: true });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        mo.observe(document.body, { childList: true, subtree: true });
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoBubble);
+  } else {
+    initVideoBubble();
   }
 
   chrome.runtime.onMessage.addListener((message) => {

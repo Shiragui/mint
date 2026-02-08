@@ -1,1 +1,25 @@
-{"manifest_version":3,"name":"Lens Capture","version":"1.0.0","description":"Select any area on a webpage, analyze it with Vision AI, and send the result to your backend.","permissions":["activeTab","scripting"],"host_permissions":["https://api.dedaluslabs.ai/*","https://generativelanguage.googleapis.com/*","https://serpapi.com/*","https://api.imgbb.com/*","<all_urls>"],"background":{"service_worker":"background.js"},"action":{"default_popup":"popup.html","default_title":"Lens Capture - Select area to analyze"},"options_ui":{"page":"options.html","open_in_tab":true}}
+{
+  "manifest_version": 3,
+  "name": "Lens Capture",
+  "version": "1.0.0",
+  "description": "Select any area on a webpage, analyze it with Vision AI, and send the result to your backend.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://api.dedaluslabs.ai/*", "https://generativelanguage.googleapis.com/*", "https://serpapi.com/*", "https://api.imgbb.com/*", "<all_urls>"],
+  "background": {"service_worker": "background.js"},
+  "action": {
+    "default_title": "Lens Capture",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_ui": {"page": "options.html", "open_in_tab": true},
+  "content_scripts": [{"matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_idle"}]
+}

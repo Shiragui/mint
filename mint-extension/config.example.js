@@ -8,5 +8,8 @@ const CONFIG = {
   geminiApiKey: '',
   serpapiKey: '',
   imgbbApiKey: '',
-  webhookUrl: ''
+  webhookUrl: '',
+  webhookApiKey: '',  // Optional: X-API-Key for backend auth
+  bookmarkApiUrl: '',  // e.g. http://localhost:8000 - for saving bookmarks
+  bookmarkToken: ''   // JWT from web frontend login
 };

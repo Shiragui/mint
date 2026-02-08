@@ -1,0 +1,8 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+rsa_key.p8
+*.pem
+lens.db

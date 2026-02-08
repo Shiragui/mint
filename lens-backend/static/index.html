@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lens Capture</title>
+  <style>
+    /* Critical: ensure only one view shows - works even if styles.css fails to load */
+    .view { min-height: 100vh; }
+    .view.hidden { display: none !important; }
+    .view:not(.hidden) { display: flex; flex-direction: column; }
+    #login-view:not(.hidden), #signup-view:not(.hidden) { align-items: center; justify-content: center; padding: 24px; }
+    .error.hidden { display: none !important; }
+    .modal.hidden { display: none !important; }
+  </style>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app">
+    <div id="login-view" class="view auth-page">
+      <div class="auth-layout">
+        <aside class="auth-hero">
+          <div class="hero-content">
+            <div class="hero-icon">🔍</div>
+            <h1>Lens Capture</h1>
+            <p>Capture products from any page. Find similar items. Save your favorites.</p>
+          </div>
+        </aside>
+        <section class="auth-form-section">
+          <div class="auth-form-card">
+            <h2>Welcome back</h2>
+            <p class="form-hint">Log in to view your bookmarks</p>
+            <form id="login-form">
+              <label for="login-username">Username</label>
+              <input type="text" id="login-username" placeholder="Enter your username" required autocomplete="username">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="submit" class="btn-primary">Log in</button>
+            </form>
+            <p id="login-error" class="error hidden"></p>
+            <p class="form-footer">Don't have an account? <a href="#" id="link-to-signup">Sign up</a></p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="signup-view" class="view auth-page hidden">
+      <div class="auth-layout">
+        <aside class="auth-hero">
+          <div class="hero-content">
+            <div class="hero-icon">🔍</div>
+            <h1>Lens Capture</h1>
+            <p>Capture products from any page. Find similar items. Save your favorites.</p>
+          </div>
+        </aside>
+        <section class="auth-form-section">
+          <div class="auth-form-card">
+            <h2>Create account</h2>
+            <p class="form-hint">Join to save your visual search bookmarks</p>
+            <form id="signup-form">
+              <label for="signup-username">Username</label>
+              <input type="text" id="signup-username" placeholder="Choose a username" required autocomplete="username">
+              <label for="signup-password">Password</label>
+              <input type="password" id="signup-password" placeholder="At least 4 characters" required autocomplete="new-password" minlength="4">
+              <button type="submit" class="btn-primary">Sign up</button>
+            </form>
+            <p id="signup-error" class="error hidden"></p>
+            <p class="form-footer">Already have an account? <a href="#" id="link-to-login">Log in</a></p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="dashboard-view" class="view hidden">
+      <header class="dashboard-header">
+        <div class="header-brand">
+          <span class="header-logo">🔍</span>
+          <h1>My Bookmarks</h1>
+        </div>
+        <div class="header-actions">
+          <button id="btn-copy-token" class="btn-ghost" title="Copy token for extension">Copy token</button>
+          <button id="btn-logout" class="btn-ghost">Log out</button>
+        </div>
+      </header>
+      <main class="dashboard-main">
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">📦</div>
+          <h3>No bookmarks yet</h3>
+          <p>Use the Lens Capture extension to select products on any page and save them here.</p>
+        </div>
+        <div id="bookmarks-list" class="bookmarks-grid"></div>
+      </main>
+    </div>
+  </div>
+
+  <div id="detail-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -14,6 +14,9 @@ function getConfig() {
     dedalusApiKey: (typeof CONFIG !== 'undefined' && CONFIG.dedalusApiKey) || '',
     geminiApiKey: (typeof CONFIG !== 'undefined' && CONFIG.geminiApiKey) || '',
     webhookUrl: (typeof CONFIG !== 'undefined' && CONFIG.webhookUrl) || '',
+    webhookApiKey: (typeof CONFIG !== 'undefined' && CONFIG.webhookApiKey) || '',
+    bookmarkApiUrl: (typeof CONFIG !== 'undefined' && CONFIG.bookmarkApiUrl) || '',
+    bookmarkToken: (typeof CONFIG !== 'undefined' && CONFIG.bookmarkToken) || '',
     serpapiKey: (typeof CONFIG !== 'undefined' && CONFIG.serpapiKey) || '',
     imgbbApiKey: (typeof CONFIG !== 'undefined' && CONFIG.imgbbApiKey) || ''
   };
@@ -89,7 +92,7 @@ async function handleAnalyzeAndSend(payload) {
         mimeType: mimeType || 'image/png',
         description,
         timestamp: new Date().toISOString()
-      });
+      }, config.webhookApiKey?.trim());
     } catch (err) {
       webhookError = formatWebhookError(err);
     }
@@ -114,7 +117,10 @@ async function handleAnalyzeAndSend(payload) {
     description,
     sentToWebhook: !webhookError && !!config.webhookUrl?.trim(),
     webhookError,
-    similarProducts
+    similarProducts,
+    croppedBase64,
+    bookmarkApiUrl: config.bookmarkApiUrl?.trim() || '',
+    bookmarkToken: config.bookmarkToken?.trim() || ''
   };
 }
 
@@ -281,10 +287,33 @@ async function uploadImageToImgBB(apiKey, base64Image) {
   return url;
 }
 
+function extractPriceFromText(text) {
+  if (!text || typeof text !== 'string') return { display: '', num: null };
+  const match = text.match(/[\$€£¥₹]\s*[\d,]+(?:\.\d{2})?|[\d,]+(?:\.\d{2})?\s*[\$€£¥₹]|USD\s*[\d,]+(?:\.\d{2})?/i);
+  if (match) {
+    const s = match[0].replace(/[^\d.]/g, '');
+    const num = parseFloat(s);
+    return { display: match[0].trim(), num: isNaN(num) ? null : num };
+  }
+  return { display: '', num: null };
+}
+
+function parseProductPrice(m) {
+  const priceObj = m.price;
+  let priceDisplay = priceObj?.value ?? (typeof priceObj === 'string' ? priceObj : '');
+  let priceNum = priceObj?.extracted_value ?? (typeof priceObj === 'number' ? priceObj : null);
+  if (!priceDisplay && !priceNum && m.title) {
+    const fallback = extractPriceFromText(m.title);
+    priceDisplay = fallback.display;
+    priceNum = fallback.num;
+  }
+  return { priceDisplay: priceDisplay || '', priceNum };
+}
+
 async function fetchVisuallySimilarProducts(serpapiKey, imgbbApiKey, base64Image, mimeType) {
   const imageUrl = await uploadImageToImgBB(imgbbApiKey, base64Image);
 
-  // Try products first (shopping listings), then visual_matches (any visually similar)
+  // Try products first (shopping listings with more prices), then visual_matches
   for (const searchType of ['products', 'visual_matches']) {
     const params = new URLSearchParams({
       engine: 'google_lens',
@@ -295,16 +324,20 @@ async function fetchVisuallySimilarProducts(serpapiKey, imgbbApiKey, base64Image
     const res = await fetch('https://serpapi.com/search.json?' + params.toString());
     if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
     const data = await res.json();
-    const matches = data.visual_matches || [];
+    const matches = data.visual_matches || data.shopping_results || [];
 
     if (matches.length > 0) {
-      return matches.slice(0, 8).map((m) => ({
-        name: m.title || 'Similar product',
-        price: m.price?.value || m.price || '',
-        link: m.link || '',
-        image: m.thumbnail || m.image || '',
-        source: m.source || ''
-      })).filter((p) => p.link);
+      return matches.slice(0, 8).map((m) => {
+        const { priceDisplay, priceNum } = parseProductPrice(m);
+        return {
+          name: m.title || 'Similar product',
+          price: priceDisplay,
+          priceNum: priceNum,
+          link: m.link || '',
+          image: m.thumbnail || m.image || '',
+          source: m.source || ''
+        };
+      }).filter((p) => p.link);
     }
   }
   return [];
@@ -363,10 +396,12 @@ async function callGeminiText(apiKey, prompt) {
   return typeof text === 'string' ? text.trim() : '';
 }
 
-async function postToWebhook(url, payload) {
+async function postToWebhook(url, payload, apiKey) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['X-API-Key'] = apiKey;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload)
   });
   if (!res.ok) {
