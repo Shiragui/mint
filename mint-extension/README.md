@@ -17,12 +17,11 @@ A Chrome Extension that mimics Google Lens: select any area on a webpage, analyz
    - Click “Load unpacked” and select the `chrome-lens-extension` folder
 
 2. **Configure API keys**
-   - If you don't have `config.js`, run `cp config.example.js config.js` (the extension needs it to load; `config.js` is gitignored).
-   - Edit `config.js` and add your API keys:
-     - **visionProvider**: `'gemini'` or `'dedalus'`
-     - **geminiApiKey** or **dedalusApiKey**: from [Google AI Studio](https://aistudio.google.com/apikey) or [Dedalus Dashboard](https://www.dedaluslabs.ai/dashboard/api-keys)
-     - **serpapiKey**, **imgbbApiKey**: optional, for reverse image search (from [serpapi.com](https://serpapi.com) and [api.imgbb.com](https://api.imgbb.com))
-     - **webhookUrl**: optional. The extension will POST JSON:
+   - Copy `.env.example` to `.env` and add your values.
+   - Run `node scripts/build-config.js` to generate `config.js` from `.env`.
+   - Both `.env` and `config.js` are gitignored for security.
+   - Keys: **VISION_PROVIDER** (`gemini` or `dedalus`), **DEDALUS_API_KEY**, **GEMINI_API_KEY**, **SERPAPI_KEY**, **IMGBB_KEY**, **WEBHOOK_URL**, **WEBHOOK_API_KEY**, **BOOKMARK_API_URL**, **BOOKMARK_TOKEN**
+   - **webhookUrl**: optional. The extension will POST JSON:
      ```json
      {
        "image": "<base64 string>",
@@ -69,5 +68,5 @@ And add an `"icons"` key with the same paths.
 
 - **activeTab**: Capture the current tab and inject the content script.
 - **scripting**: Inject the snipping content script.
-- **config.js**: API keys and webhook (gitignored – copy from `config.example.js`).
+- **.env**: API keys (gitignored). Run `node scripts/build-config.js` to generate `config.js`.
 - **host_permissions**: `https://api.dedaluslabs.ai/*` and `https://generativelanguage.googleapis.com/*` for vision; `<all_urls>` so the webhook can be any HTTPS URL.

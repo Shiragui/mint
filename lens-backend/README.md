@@ -1,91 +1,65 @@
-# Lens Capture Webhook Backend
+# Lens Capture Backend
 
-FastAPI backend that receives data from the Lens Capture Chrome extension and stores it in Snowflake via the SQL API (REST).
+Netlify Functions + Neon PostgreSQL backend for the Lens Capture Chrome extension. Handles auth, bookmarks (Base64 images + AI descriptions), and the lens webhook.
 
 ## Features
 
-- **POST /api/lens** – Webhook endpoint (requires `X-API-Key` header)
+- **POST /api/lens** – Webhook endpoint (requires `X-API-Key` header); saves to Neon `lens_vault`
+- **POST /auth/register** – Create account, returns JWT
 - **POST /auth/login** – Username/password login (returns JWT)
-- Snowflake SQL API (REST) – no heavy connector
-- Snowflake key-pair authentication (JWT from private key)
-- Base64 image handled via bind variables (no SQL injection)
+- **POST /api/bookmarks** – Save bookmark (Base64 image, AI description, similar products)
+- **GET /api/bookmarks** – List user's bookmarks
+- **GET /api/bookmarks/:id** – Get a single bookmark
+- **DELETE /api/bookmarks/:id** – Delete a bookmark
 
 ## Setup
 
 ### 1. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+npm install
 ```
 
-### 2. Snowflake key-pair auth
-
-Generate an RSA key pair:
+### 2. Connect Neon to Netlify
 
 ```bash
-openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt
+netlify db init
 ```
 
-Assign the public key to your Snowflake user:
+Or manually add `NETLIFY_DATABASE_URL` in Netlify: Site settings → Environment variables. The `@netlify/neon` package reads this automatically.
 
-```sql
-ALTER USER my_user SET RSA_PUBLIC_KEY='<paste public key content>';
-```
+### 3. Create the schema
 
-### 3. Create the table
-
-Run `sql/create_table.sql` in your Snowflake worksheet.
+Run `sql/neon_schema.sql` in your Neon SQL Editor (or via `psql`).
 
 ### 4. Environment variables
 
-Copy `.env.example` to `.env` and configure:
-
 | Variable | Description |
 |----------|-------------|
+| `NETLIFY_DATABASE_URL` | Set by Netlify when Neon is connected |
 | `LENS_API_KEY` | Optional. If set, extension must send X-API-Key. Leave empty to skip. |
 | `LENS_SECRET_KEY` | JWT secret for login tokens |
-| `LENS_ADMIN_USER` | Login username |
-| `LENS_ADMIN_PASSWORD` | Login password (or bcrypt hash) |
-| `SNOWFLAKE_ACCOUNT` | Account identifier (e.g. xy12345) |
-| `SNOWFLAKE_USER` | Snowflake user |
-| `SNOWFLAKE_PRIVATE_KEY_PATH` | Path to rsa_key.p8 (local) |
-| `SNOWFLAKE_PRIVATE_KEY` | PEM content (Netlify/serverless; use `\n` for newlines) |
-| `SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | Passphrase if key is encrypted |
-| `SNOWFLAKE_WAREHOUSE` | Warehouse name |
-| `SNOWFLAKE_DATABASE` | Database name |
-| `SNOWFLAKE_SCHEMA` | Schema (default: PUBLIC) |
-| `SNOWFLAKE_ROLE` | Role (optional) |
+| `LENS_ADMIN_USER` | Fallback admin username |
+| `LENS_ADMIN_PASSWORD` | Fallback admin password |
 
-### 5. Run
+### 5. Run locally
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+netlify dev
 ```
 
 ## Deploy to Netlify
 
-1. Push the repo to GitHub and connect it to Netlify.
-2. Set environment variables in Netlify: Site settings → Environment variables.
-3. For Snowflake on Netlify, use `SNOWFLAKE_PRIVATE_KEY` (paste PEM content; use `\n` for newlines) instead of `SNOWFLAKE_PRIVATE_KEY_PATH`.
-4. Build settings: Netlify reads `netlify.toml` automatically.
-
-**Note:** SQLite data (users, bookmarks) is stored in `/tmp` on Netlify and is ephemeral. For persistence, consider [Turso](https://turso.tech/) or another hosted DB.
-
-## Extension configuration
-
-In your extension's `config.js`, set:
-
-```js
-webhookUrl: 'https://your-backend.com/api/lens'
-```
-
-And send the `X-API-Key` header with the same value as `LENS_API_KEY`. Update the extension's `background.js` to include this header when posting to the webhook.
+1. Push to GitHub and connect to Netlify.
+2. Connect Neon: `netlify db init` or add `NETLIFY_DATABASE_URL` in Site settings.
+3. Run `sql/neon_schema.sql` in Neon SQL Editor.
+4. Set `LENS_SECRET_KEY`, `LENS_ADMIN_USER`, `LENS_ADMIN_PASSWORD` in env vars.
 
 ## API
 
 ### POST /api/lens
 
-**Headers:** `X-API-Key: <your-api-key>`
+**Headers:** `X-API-Key: <your-api-key>` (if `LENS_API_KEY` is set)
 
 **Body:**
 ```json
@@ -99,21 +73,30 @@ And send the `X-API-Key` header with the same value as `LENS_API_KEY`. Update th
 
 ### POST /auth/login
 
-Form data: `username`, `password`
+Form data (`application/x-www-form-urlencoded`): `username`, `password`
 
 Returns: `{ "access_token": "...", "token_type": "bearer" }`
 
-## JWT helper
+### POST /api/bookmarks
 
-Use `snowflake_jwt.generate_snowflake_jwt()` to generate tokens for Snowflake:
+**Headers:** `Authorization: Bearer <token>`
 
-```python
-from snowflake_jwt import generate_snowflake_jwt
-
-token = generate_snowflake_jwt(
-    account_identifier="xy12345",
-    user="MY_USER",
-    private_key_path="rsa_key.p8",
-    passphrase=None,
-)
+**Body:**
+```json
+{
+  "image": "base64...",
+  "description": "AI description",
+  "similarProducts": [{ "name": "...", "link": "...", "price": "...", "image": "..." }],
+  "sourceUrl": "https://..."
+}
 ```
+
+## Extension configuration
+
+In your extension's `config.js`:
+
+```js
+webhookUrl: 'https://your-site.netlify.app/api/lens'
+```
+
+Send the `X-API-Key` header when posting to the webhook if `LENS_API_KEY` is set.
