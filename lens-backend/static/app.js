@@ -75,6 +75,35 @@ async function register(username, password) {
   setToken(data.access_token);
 }
 
+let state = { boards: [], bookmarks: [], selectedBoardId: null };
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function renderBoards() {
+  const list = document.getElementById('boards-list');
+  const createForm = document.getElementById('create-board-form');
+  const newBoardBtn = document.getElementById('btn-new-board');
+  list.innerHTML = '';
+  state.boards.forEach((b) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'board-tab' + (state.selectedBoardId === b.id ? ' active' : '');
+    btn.textContent = b.name;
+    btn.dataset.boardId = b.id;
+    btn.addEventListener('click', () => {
+      state.selectedBoardId = b.id;
+      renderBoards();
+      renderBookmarks();
+    });
+    list.appendChild(btn);
+  });
+  newBoardBtn.classList.toggle('hidden', !createForm.classList.contains('hidden'));
+}
+
 function renderBookmark(b) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
@@ -85,8 +114,11 @@ function renderBookmark(b) {
     : '<div class="bookmark-thumb-placeholder">🛒</div>';
 
   const count = Array.isArray(b.results) ? b.results.length : 0;
+  const defaultBoardId = state.boards[0]?.id || '';
+  const boardId = b.board_id || defaultBoardId;
+
   card.innerHTML = `
-    <button class="bookmark-delete" title="Delete" aria-label="Delete bookmark" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;padding:4px;font-size:18px;color:#9ca3af;line-height:1;z-index:1">×</button>
+    <button class="bookmark-delete" title="Delete" aria-label="Delete bookmark">×</button>
     ${thumb}
     <div class="bookmark-info">
       <p class="bookmark-desc">${escapeHtml(b.description || 'No description')}</p>
@@ -94,6 +126,12 @@ function renderBookmark(b) {
         <span class="bookmark-results-count">${count} similar product${count !== 1 ? 's' : ''}</span>
         · ${new Date(b.created_at).toLocaleDateString()}
       </p>
+      <div class="bookmark-move">
+        <label>Move to:</label>
+        <select class="bookmark-board-select" data-id="${escapeHtml(b.id)}">
+          ${state.boards.map((br) => `<option value="${br.id}" ${br.id === boardId ? 'selected' : ''}>${escapeHtml(br.name)}</option>`).join('')}
+        </select>
+      </div>
     </div>
   `;
   card.style.position = 'relative';
@@ -101,19 +139,32 @@ function renderBookmark(b) {
     e.stopPropagation();
     deleteBookmark(b.id);
   });
+  card.querySelector('.bookmark-board-select').addEventListener('change', (e) => {
+    e.stopPropagation();
+    moveBookmark(b.id, e.target.value);
+  });
+  card.addEventListener('click', (e) => {
+    if (!e.target.closest('.bookmark-delete, .bookmark-board-select')) openDetail(b.id);
+  });
   return card;
-}
-
-function escapeHtml(s) {
-  const div = document.createElement('div');
-  div.textContent = s;
-  return div.innerHTML;
 }
 
 async function deleteBookmark(id) {
   await fetchApi(`/api/bookmarks/${id}`, { method: 'DELETE' });
   closeModal();
-  loadBookmarks();
+  loadAll();
+}
+
+async function moveBookmark(id, boardId) {
+  await fetchApi(`/api/bookmarks/${id}`, {
+    method: 'PATCH',
+    body: { board_id: boardId },
+  });
+  const b = state.bookmarks.find((x) => x.id === id);
+  if (b) b.board_id = boardId;
+  if (state.selectedBoardId !== boardId) {
+    renderBookmarks();
+  }
 }
 
 function renderDetail(b) {
@@ -142,21 +193,40 @@ function renderDetail(b) {
   document.getElementById('detail-delete-btn').addEventListener('click', () => deleteBookmark(b.id));
 }
 
-async function loadBookmarks() {
-  const data = await fetchApi('/api/bookmarks');
+function renderBookmarks() {
   const list = document.getElementById('bookmarks-list');
   const empty = document.getElementById('empty-state');
   list.innerHTML = '';
-  if (!data.bookmarks || data.bookmarks.length === 0) {
+  const filtered = state.selectedBoardId
+    ? state.bookmarks.filter((b) => (b.board_id || state.boards[0]?.id) === state.selectedBoardId)
+    : state.bookmarks;
+  if (filtered.length === 0) {
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
-  data.bookmarks.forEach(b => {
+  filtered.forEach((b) => {
     const card = renderBookmark(b);
-    card.addEventListener('click', () => openDetail(b.id));
     list.appendChild(card);
   });
+}
+
+async function loadAll() {
+  try {
+    const [boardsData, bookmarksData] = await Promise.all([
+      fetchApi('/api/boards'),
+      fetchApi('/api/bookmarks'),
+    ]);
+    state.boards = boardsData.boards || [];
+    state.bookmarks = bookmarksData.bookmarks || [];
+    if (state.boards.length > 0 && !state.selectedBoardId) {
+      state.selectedBoardId = state.boards[0].id;
+    }
+    renderBoards();
+    renderBookmarks();
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function openDetail(id) {
@@ -172,7 +242,7 @@ function closeModal() {
 document.addEventListener('DOMContentLoaded', () => {
   if (getToken()) {
     showView('dashboard-view');
-    loadBookmarks();
+    loadAll();
   } else {
     showView('login-view');
   }
@@ -189,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await login(username, password);
       showView('dashboard-view');
-      loadBookmarks();
+      loadAll();
     } catch (err) {
       showError('login-error', err.message);
     }
@@ -215,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await register(username, password);
       showView('dashboard-view');
-      loadBookmarks();
+      loadAll();
     } catch (err) {
       showError('signup-error', err.message);
     }
@@ -236,6 +306,41 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-logout').addEventListener('click', () => {
     setToken(null);
     showView('login-view');
+  });
+
+  document.getElementById('btn-new-board').addEventListener('click', () => {
+    document.getElementById('create-board-form').classList.remove('hidden');
+    document.getElementById('btn-new-board').classList.add('hidden');
+    document.getElementById('new-board-name').value = '';
+    document.getElementById('new-board-name').focus();
+  });
+
+  document.getElementById('btn-cancel-board').addEventListener('click', () => {
+    document.getElementById('create-board-form').classList.add('hidden');
+    document.getElementById('btn-new-board').classList.remove('hidden');
+  });
+
+  document.getElementById('btn-create-board').addEventListener('click', async () => {
+    const name = document.getElementById('new-board-name').value.trim();
+    if (!name) return;
+    try {
+      const board = await fetchApi('/api/boards', {
+        method: 'POST',
+        body: { name },
+      });
+      state.boards.push(board);
+      state.selectedBoardId = board.id;
+      document.getElementById('create-board-form').classList.add('hidden');
+      document.getElementById('btn-new-board').classList.remove('hidden');
+      renderBoards();
+      renderBookmarks();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  document.getElementById('new-board-name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-create-board').click();
   });
 
   document.querySelector('.modal-backdrop').addEventListener('click', closeModal);

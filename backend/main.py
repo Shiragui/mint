@@ -60,10 +60,53 @@ async def save_item(
 
 
 @app.get("/items")
-async def list_items(user_id: str | None = Depends(get_user_id)):
+async def list_items(
+    board_id: str | None = None,
+    user_id: str | None = Depends(get_user_id),
+):
     if REQUIRE_AUTH and not user_id:
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    return await items.list_items(user_id)
+    return await items.list_items(user_id, board_id)
+
+
+@app.patch("/items/{item_id}")
+async def move_item(
+    item_id: str,
+    body: items.MoveItemRequest,
+    user_id: str | None = Depends(get_user_id),
+):
+    if REQUIRE_AUTH and not user_id:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    if not await items.move_item_to_board(item_id, body.board_id, user_id):
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"status": "moved"}
+
+
+@app.get("/boards")
+async def list_boards(user_id: str | None = Depends(get_user_id)):
+    if REQUIRE_AUTH and not user_id:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    return await items.list_boards(user_id)
+
+
+@app.post("/boards")
+async def create_board(
+    body: items.CreateBoardRequest,
+    user_id: str | None = Depends(get_user_id),
+):
+    if REQUIRE_AUTH and not user_id:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    return await items.create_board(body, user_id)
+
+
+@app.delete("/boards/{board_id}")
+async def delete_board(
+    board_id: str,
+    user_id: str | None = Depends(get_user_id),
+):
+    if REQUIRE_AUTH and not user_id:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    return await items.delete_board(board_id, user_id)
 
 
 @app.delete("/items/{item_id}")

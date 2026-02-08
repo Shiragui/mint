@@ -17,6 +17,13 @@ async function ensureTables() {
       password_hash TEXT NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`
+    await sql`CREATE TABLE IF NOT EXISTS boards (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL DEFAULT 'Saved',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`
+    await sql`CREATE INDEX IF NOT EXISTS idx_boards_user ON boards(user_id)`
     await sql`CREATE TABLE IF NOT EXISTS bookmarks (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -27,6 +34,12 @@ async function ensureTables() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`
     await sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id)`
+    try {
+      await sql`ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS board_id UUID REFERENCES boards(id) ON DELETE SET NULL`
+    } catch (_) {}
+    try {
+      await sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_board ON bookmarks(board_id)`
+    } catch (_) {}
     await sql`CREATE TABLE IF NOT EXISTS lens_vault (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       image TEXT,
@@ -58,34 +71,63 @@ export async function getUserByUsername(username) {
   return row ? { id: row.id, username: row.username, password_hash: row.password_hash } : null
 }
 
+async function getOrCreateDefaultBoard(userId) {
+  const [existing] = await sql`
+    SELECT id FROM boards WHERE user_id = ${userId} ORDER BY created_at ASC LIMIT 1
+  `
+  if (existing) return String(existing.id)
+  const [row] = await sql`
+    INSERT INTO boards (user_id, name) VALUES (${userId}, 'Saved') RETURNING id
+  `
+  return String(row.id)
+}
+
 /**
  * Save a bookmark - Base64 image, AI description, similar products, source URL.
  */
-export async function createBookmark(userId, imageBase64, description, results, sourceUrl) {
+export async function createBookmark(userId, imageBase64, description, results, sourceUrl, boardId) {
   await ensureTables()
+  const bid = boardId || await getOrCreateDefaultBoard(userId)
   const resultsJson = JSON.stringify(results || [])
   const [row] = await sql`
-    INSERT INTO bookmarks (user_id, image_base64, description, results_json, source_url)
-    VALUES (${userId}, ${imageBase64}, ${description}, ${resultsJson}::jsonb, ${sourceUrl || ''})
+    INSERT INTO bookmarks (user_id, board_id, image_base64, description, results_json, source_url)
+    VALUES (${userId}, ${bid}, ${imageBase64}, ${description}, ${resultsJson}::jsonb, ${sourceUrl || ''})
     RETURNING id
   `
   return String(row.id)
 }
 
 /**
- * Fetch all bookmarks for a user, ordered by created_at desc.
- * Returns objects with image_base64, description, results (parsed), source_url, created_at.
+ * Fetch all bookmarks for a user, optionally filtered by board. Ordered by created_at desc.
  */
-export async function getBookmarks(userId) {
+export async function getBookmarks(userId, boardId = null) {
   await ensureTables()
-  const rows = await sql`
-    SELECT id, image_base64, description, results_json, source_url, created_at
-    FROM bookmarks
-    WHERE user_id = ${userId}
-    ORDER BY created_at DESC
-  `
+  const defaultBoardId = await getOrCreateDefaultBoard(userId)
+  let rows
+  if (boardId) {
+    if (boardId === defaultBoardId) {
+      rows = await sql`
+        SELECT id, board_id, image_base64, description, results_json, source_url, created_at
+        FROM bookmarks WHERE user_id = ${userId} AND (board_id = ${boardId} OR board_id IS NULL)
+        ORDER BY created_at DESC
+      `
+    } else {
+      rows = await sql`
+        SELECT id, board_id, image_base64, description, results_json, source_url, created_at
+        FROM bookmarks WHERE user_id = ${userId} AND board_id = ${boardId}
+        ORDER BY created_at DESC
+      `
+    }
+  } else {
+    rows = await sql`
+      SELECT id, board_id, image_base64, description, results_json, source_url, created_at
+      FROM bookmarks WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+    `
+  }
   return rows.map(r => ({
     id: String(r.id),
+    board_id: r.board_id ? String(r.board_id) : defaultBoardId,
     image_base64: r.image_base64,
     description: r.description,
     results: Array.isArray(r.results_json) ? r.results_json : [],
@@ -100,19 +142,49 @@ export async function getBookmarks(userId) {
 export async function getBookmark(bookmarkId, userId) {
   await ensureTables()
   const [row] = await sql`
-    SELECT id, image_base64, description, results_json, source_url, created_at
+    SELECT id, board_id, image_base64, description, results_json, source_url, created_at
     FROM bookmarks
     WHERE id = ${bookmarkId} AND user_id = ${userId}
   `
   if (!row) return null
+  const defaultBoardId = row.board_id ? String(row.board_id) : await getOrCreateDefaultBoard(userId)
   return {
     id: String(row.id),
+    board_id: defaultBoardId,
     image_base64: row.image_base64,
     description: row.description,
     results: Array.isArray(row.results_json) ? row.results_json : [],
     source_url: row.source_url,
     created_at: row.created_at,
   }
+}
+
+export async function getBoards(userId) {
+  await ensureTables()
+  await getOrCreateDefaultBoard(userId)
+  const rows = await sql`
+    SELECT id, name FROM boards WHERE user_id = ${userId} ORDER BY created_at ASC
+  `
+  return rows.map(r => ({ id: String(r.id), name: r.name }))
+}
+
+export async function createBoard(userId, name) {
+  await ensureTables()
+  const [row] = await sql`
+    INSERT INTO boards (user_id, name) VALUES (${userId}, ${(name || 'Untitled').trim()})
+    RETURNING id, name
+  `
+  return { id: String(row.id), name: row.name }
+}
+
+export async function updateBookmarkBoard(bookmarkId, userId, boardId) {
+  await ensureTables()
+  const result = await sql`
+    UPDATE bookmarks SET board_id = ${boardId}
+    WHERE id = ${bookmarkId} AND user_id = ${userId}
+    RETURNING id
+  `
+  return result.length > 0
 }
 
 export async function deleteBookmark(bookmarkId, userId) {

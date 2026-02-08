@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lens Capture</title>
+  <title>MINT</title>
   <style>
     /* Critical: ensure only one view shows - works even if styles.css fails to load */
     .view { min-height: 100vh; }
@@ -22,7 +22,7 @@
         <aside class="auth-hero">
           <div class="hero-content">
             <div class="hero-icon">🔍</div>
-            <h1>Lens Capture</h1>
+            <h1>MINT</h1>
             <p>Capture products from any page. Find similar items. Save your favorites.</p>
           </div>
         </aside>
@@ -49,7 +49,7 @@
         <aside class="auth-hero">
           <div class="hero-content">
             <div class="hero-icon">🔍</div>
-            <h1>Lens Capture</h1>
+            <h1>MINT</h1>
             <p>Capture products from any page. Find similar items. Save your favorites.</p>
           </div>
         </aside>
@@ -75,19 +75,33 @@
       <header class="dashboard-header">
         <div class="header-brand">
           <span class="header-logo">🔍</span>
-          <h1>My Bookmarks</h1>
+          <h1>MINT</h1>
         </div>
         <div class="header-actions">
           <button id="btn-logout" class="btn-ghost">Log out</button>
         </div>
       </header>
       <main class="dashboard-main">
-        <div id="empty-state" class="empty-state hidden">
-          <div class="empty-icon">📦</div>
-          <h3>No bookmarks yet</h3>
-          <p>Use the Lens Capture extension to select products on any page and save them here.</p>
-        </div>
-        <div id="bookmarks-list" class="bookmarks-grid"></div>
+        <aside class="boards-sidebar">
+          <h2 class="boards-title">Boards</h2>
+          <div id="boards-list"></div>
+          <div id="create-board-form" class="create-board-form hidden">
+            <input type="text" id="new-board-name" placeholder="Board name" class="input">
+            <div class="create-board-actions">
+              <button type="button" id="btn-create-board" class="btn-primary">Create</button>
+              <button type="button" id="btn-cancel-board" class="btn-ghost">Cancel</button>
+            </div>
+          </div>
+          <button type="button" id="btn-new-board" class="board-tab add-board">+ New board</button>
+        </aside>
+        <section class="dashboard-content">
+          <div id="empty-state" class="empty-state hidden">
+            <div class="empty-icon">📦</div>
+            <h3>No bookmarks yet</h3>
+            <p>Use the Lens Capture extension to select products on any page and save them here.</p>
+          </div>
+          <div id="bookmarks-list" class="bookmarks-grid"></div>
+        </section>
       </main>
     </div>
   </div>

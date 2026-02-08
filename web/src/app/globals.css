@@ -23,12 +23,99 @@ a:hover {
   padding: 24px;
 }
 
+.dashboard-container {
+  max-width: 960px;
+}
+
+.dashboard-layout {
+  display: flex;
+  gap: 32px;
+}
+
+.boards-sidebar {
+  flex-shrink: 0;
+  width: 180px;
+}
+
+.board-tab {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #374151;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.board-tab:hover {
+  background: #f3f4f6;
+}
+
+.board-tab.active {
+  background: #e5e7eb;
+  font-weight: 600;
+}
+
+.board-tab.add-board {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.dashboard-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
 .card {
   background: #fff;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.card-compact {
+  padding: 16px;
+  margin-bottom: 0;
+}
+
+.card-delete-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 20px;
+  color: #9ca3af;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.card-delete-btn:hover {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.card-move {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .card h3 {
   margin: 0 0 8px;
@@ -39,10 +126,30 @@ a:hover {
   font-size: 14px;
   color: #6b7280;
 }
-.card .meta {
+.card .meta,
+.card-meta {
   font-size: 12px;
   color: #9ca3af;
   margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .dashboard-layout {
+    flex-direction: column;
+  }
+  .boards-sidebar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .board-tab {
+    width: auto;
+    display: inline-block;
+  }
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .btn {

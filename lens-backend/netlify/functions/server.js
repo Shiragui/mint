@@ -11,6 +11,9 @@ import {
   getBookmarks,
   getBookmark,
   deleteBookmark,
+  getBoards,
+  createBoard,
+  updateBookmarkBoard,
   insertLensVault,
 } from './db.js'
 import { hashPassword, verifyPassword, createAccessToken, decodeToken } from './auth.js'
@@ -112,14 +115,38 @@ app.post('/api/lens', requireApiKey, async (req, res) => {
   }
 })
 
+// --- Boards ---
+app.get('/api/boards', requireToken, async (req, res) => {
+  try {
+    const user = await getUserByUsername(req.auth.sub)
+    if (!user) return res.status(401).json({ detail: 'User not found' })
+    const boards = await getBoards(user.id)
+    return res.json({ boards })
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+app.post('/api/boards', requireToken, async (req, res) => {
+  try {
+    const user = await getUserByUsername(req.auth.sub)
+    if (!user) return res.status(401).json({ detail: 'User not found' })
+    const { name } = req.body || {}
+    const board = await createBoard(user.id, name)
+    return res.json(board)
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
 // --- Bookmarks ---
 app.post('/api/bookmarks', requireToken, async (req, res) => {
   try {
     const user = await getUserByUsername(req.auth.sub)
     if (!user) return res.status(401).json({ detail: 'User not found' })
-    const { image, description, similarProducts, sourceUrl } = req.body || {}
+    const { image, description, similarProducts, sourceUrl, boardId } = req.body || {}
     if (!image || !description) return res.status(400).json({ detail: 'image and description required' })
-    const bid = await createBookmark(user.id, image, description, similarProducts || [], sourceUrl)
+    const bid = await createBookmark(user.id, image, description, similarProducts || [], sourceUrl, boardId)
     return res.json({ id: bid, status: 'saved' })
   } catch (err) {
     return res.status(500).json({ detail: err.message })
@@ -130,7 +157,8 @@ app.get('/api/bookmarks', requireToken, async (req, res) => {
   try {
     const user = await getUserByUsername(req.auth.sub)
     if (!user) return res.status(401).json({ detail: 'User not found' })
-    const bookmarks = await getBookmarks(user.id)
+    const boardId = req.query.board_id || null
+    const bookmarks = await getBookmarks(user.id, boardId)
     return res.json({ bookmarks })
   } catch (err) {
     return res.status(500).json({ detail: err.message })
@@ -144,6 +172,20 @@ app.get('/api/bookmarks/:bookmarkId', requireToken, async (req, res) => {
     const b = await getBookmark(req.params.bookmarkId, user.id)
     if (!b) return res.status(404).json({ detail: 'Bookmark not found' })
     return res.json(b)
+  } catch (err) {
+    return res.status(500).json({ detail: err.message })
+  }
+})
+
+app.patch('/api/bookmarks/:bookmarkId', requireToken, async (req, res) => {
+  try {
+    const user = await getUserByUsername(req.auth.sub)
+    if (!user) return res.status(401).json({ detail: 'User not found' })
+    const { board_id } = req.body || {}
+    if (!board_id) return res.status(400).json({ detail: 'board_id required' })
+    const ok = await updateBookmarkBoard(req.params.bookmarkId, user.id, board_id)
+    if (!ok) return res.status(404).json({ detail: 'Bookmark not found' })
+    return res.json({ status: 'moved' })
   } catch (err) {
     return res.status(500).json({ detail: err.message })
   }
