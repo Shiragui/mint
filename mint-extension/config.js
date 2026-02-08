@@ -3,7 +3,7 @@
  * config.js is gitignored so your keys stay private.
  */
 const CONFIG = {
-  visionProvider: 'gemini', // 'gemini' or 'dedalus'
+  visionProvider: 'dedalus', // 'gemini' or 'dedalus'
   dedalusApiKey: '',
   geminiApiKey: '',
   serpapiKey: '',
