@@ -8,8 +8,8 @@ body {
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
-  color: #1a1a1a;
-  background: #f8f9fa;
+  color: #111827;
+  background: #ffffff;
 }
 
 .popup {
@@ -20,13 +20,13 @@ body {
   margin: 0 0 4px;
   font-size: 18px;
   font-weight: 600;
-  color: #0d47a1;
+  color: #047857;
 }
 
 .subtitle {
   margin: 0 0 16px;
   font-size: 13px;
-  color: #5f6368;
+  color: #6b7280;
   line-height: 1.4;
 }
 
@@ -47,15 +47,15 @@ label input {
   width: 100%;
   padding: 8px 12px;
   font-size: 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
 }
 
 label input:focus {
   outline: none;
-  border-color: #0d47a1;
-  box-shadow: 0 0 0 2px rgba(13, 71, 161, 0.2);
+  border-color: #34d399;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.25);
 }
 
 .error {
@@ -67,7 +67,7 @@ label input:focus {
 .signup-prompt {
   margin: 16px 0 0;
   font-size: 13px;
-  color: #5f6368;
+  color: #6b7280;
   text-align: center;
 }
 
@@ -88,13 +88,13 @@ label input:focus {
   border: none;
   padding: 0;
   font-size: 12px;
-  color: #5f6368;
+  color: #6b7280;
   cursor: pointer;
   text-decoration: none;
 }
 
 .btn-link:hover {
-  color: #0d47a1;
+  color: #047857;
   text-decoration: underline;
 }
 
@@ -111,16 +111,16 @@ label input:focus {
 }
 
 .btn-primary {
-  background: #0d47a1;
-  color: #fff;
+  background: #34d399;
+  color: #047857;
 }
 
 .btn-primary:hover {
-  background: #1565c0;
+  background: #6ee7b7;
 }
 
 .btn-primary:active {
-  background: #0a3d91;
+  background: #10b981;
 }
 
 .btn-primary:disabled {
@@ -131,11 +131,11 @@ label input:focus {
 .link {
   display: block;
   font-size: 12px;
-  color: #5f6368;
+  color: #6b7280;
   text-decoration: none;
 }
 
 .link:hover {
-  color: #0d47a1;
+  color: #047857;
   text-decoration: underline;
 }

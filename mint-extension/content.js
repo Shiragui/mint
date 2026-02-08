@@ -552,7 +552,8 @@
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  const MAX_IMAGE_DIM = 1200; // Resize to reduce payload and avoid 413
+  const MAX_IMAGE_DIM = 800; // Resize to reduce payload and avoid 413
+  const JPEG_QUALITY = 0.82;
 
   function cropImageToSelection(dataUrl, rect, dpr) {
     return new Promise((resolve, reject) => {
@@ -579,8 +580,8 @@
         const ctx = c.getContext('2d');
         ctx.drawImage(img, x, y, Math.round(rect.w * scale), Math.round(rect.h * scale), 0, 0, w, h);
         try {
-          const base64 = c.toDataURL('image/png').split(',')[1];
-          resolve({ base64, mimeType: 'image/png' });
+          const base64 = c.toDataURL('image/jpeg', JPEG_QUALITY).split(',')[1];
+          resolve({ base64, mimeType: 'image/jpeg' });
         } catch (e) {
           reject(e);
         }

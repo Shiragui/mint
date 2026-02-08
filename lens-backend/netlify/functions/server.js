@@ -17,8 +17,8 @@ import { hashPassword, verifyPassword, createAccessToken, decodeToken } from './
 
 const app = express()
 // Allow large payloads (base64 images) – Netlify limit is 6MB
-app.use(express.json({ limit: '6mb' }))
-app.use(express.urlencoded({ extended: true, limit: '6mb' }))
+app.use(express.json({ limit: 6 * 1024 * 1024 }))
+app.use(express.urlencoded({ extended: true, limit: 6 * 1024 * 1024 }))
 
 // CORS: allow extension content scripts and web frontend
 app.use((req, res, next) => {

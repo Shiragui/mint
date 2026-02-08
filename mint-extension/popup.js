@@ -51,7 +51,7 @@ loginForm.addEventListener('submit', async (e) => {
       bookmarkToken: data.access_token
     });
     passwordInput.value = '';
-    await checkAuth();
+    window.close();
   } catch (err) {
     loginError.textContent = err.message || 'Sign in failed';
     loginError.style.display = 'block';
